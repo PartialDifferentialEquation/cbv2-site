@@ -6,26 +6,28 @@ meant a Python process sat on the public edge to serve one HTML file. Here the s
 substitution happens **once, at build time**, and the output is plain files any static host
 will serve — nginx, Caddy, S3, Pages.
 
-The trade that buys: `--vendor-name` / `--contact` are baked in at build time, so changing
-either is a rebuild rather than a restart. For a marketing page that is the right way round —
-the values change roughly never, and nothing dynamic belongs on this box.
+The trade that buys: every operator value is baked in at build time, so changing one is a
+rebuild rather than a restart. For a marketing site that is the right way round — the values
+change roughly never, and nothing dynamic belongs on this box.
 
     python build.py                        # -> dist/, values from the environment
     python build.py --contact sales@acme.example --out /srv/www
 
-Placeholders in `src/index.html`, all four required:
+Each page is `src/pages/<slug>.html` (the body) poured into `src/layout.html` (head, nav,
+footer, the tte.js bootstrap) at `{{CONTENT}}`, so the chrome exists once.
 
-    {{VENDOR_NAME}}   product/vendor name shown in the masthead and footer
-    {{CONTACT_HREF}}  href for the "Request access" call to action
-    {{CONTACT_LABEL}} its visible text
-    {{YEAR}}          copyright year
+Values that are unset render as a conspicuous "not configured" marker rather than plausible
+filler. A marketing site inventing a registered address or a support mailbox is worse than one
+admitting the field is empty — and on the legal page it would be a fabricated record.
 """
 
 from __future__ import annotations
 
 import argparse
 import datetime
+import html
 import os
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -36,11 +38,55 @@ DEFAULT_OUT = ROOT / "dist"
 
 # Everything a build writes into the output directory. `_prepare_out` clears only these, so a
 # `--out` pointed at anything else is an error rather than a silent wipe.
-OUTPUTS = frozenset({"index.html", "vendor", ".nojekyll"})
+PAGES = {
+    # slug: (title, meta description)
+    "index": (
+        "{vendor} — control your software after you ship it",
+        "Package, license, meter and revoke proprietary software and AI models running on "
+        "infrastructure you don't own. Per-customer attribution, per-run authorization, instant "
+        "revocation, and a crown jewel that never leaves your server.",
+    ),
+    "about": (
+        "About — {vendor}",
+        "What {vendor} enforces, where the ceiling is, how it is deployed, and why licence "
+        "enforcement is deliberately fail-soft.",
+    ),
+    "contact": (
+        "Contact — {vendor}",
+        "How to reach {vendor} for sales, security reports, privacy requests and support, how "
+        "pricing is structured, and the registered entity details.",
+    ),
+    "legal": (
+        "Terms & privacy — {vendor}",
+        "Draft terms of service and privacy statement for {vendor}: what a licence grants, the "
+        "honest limits of client-side protection, and what the licensing service collects.",
+    ),
+}
 
-# Every placeholder the template may contain. The build fails if one is missing from this map
-# (an unsubstituted `{{...}}` would otherwise ship to production as literal text).
-PLACEHOLDERS = ("VENDOR_NAME", "CONTACT_HREF", "CONTACT_LABEL", "YEAR")
+OUTPUTS = frozenset({"vendor", ".nojekyll"} | {f"{slug}.html" for slug in PAGES})
+
+# Operator-supplied values. name -> (env var, CLI flag, what it is, whether it may be omitted
+# without the page reading as broken).
+FIELDS = {
+    "VENDOR_NAME":       ("CBSITE_VENDOR_NAME", "vendor name", "CBv2"),
+    "CONTACT":           ("CBSITE_CONTACT", "'Request access' target", ""),
+    "EMAIL_SALES":       ("CBSITE_EMAIL_SALES", "sales address", ""),
+    "EMAIL_SECURITY":    ("CBSITE_EMAIL_SECURITY", "security address", ""),
+    "EMAIL_PRIVACY":     ("CBSITE_EMAIL_PRIVACY", "privacy address", ""),
+    "EMAIL_SUPPORT":     ("CBSITE_EMAIL_SUPPORT", "support address", ""),
+    "LEGAL_ENTITY":      ("CBSITE_LEGAL_ENTITY", "registered company name", ""),
+    "LEGAL_ADDRESS":     ("CBSITE_LEGAL_ADDRESS", "registered address", ""),
+    "LEGAL_REG":         ("CBSITE_LEGAL_REG", "company / VAT registration", ""),
+    "LEGAL_JURISDICTION": ("CBSITE_LEGAL_JURISDICTION", "governing law", ""),
+}
+
+# Placeholders the layout and pages may contain, beyond the FIELDS above.
+DERIVED = ("CONTACT_HREF", "CONTACT_LABEL", "YEAR", "PAGE_TITLE", "PAGE_DESC", "CONTENT")
+
+
+def unset(what: str) -> str:
+    """Render a missing operator value as an obvious gap, never as plausible filler."""
+    return f'<span class="unset">{html.escape(what)} not configured</span>'
 
 
 def resolve_contact(contact: str) -> tuple[str, str]:
@@ -61,25 +107,50 @@ def resolve_contact(contact: str) -> tuple[str, str]:
     return "#", contact
 
 
-def render(template: str, *, vendor_name: str, contact: str, year: int | None = None) -> str:
-    """Substitute every placeholder and prove none survived."""
-    contact_href, contact_label = resolve_contact(contact)
+def email_link(address: str, what: str) -> str:
+    """An address becomes a mailto link; anything else is shown as-is; empty is marked unset."""
+    address = address.strip()
+    if not address:
+        return unset(what)
+    if "@" in address and "://" not in address and " " not in address:
+        return f'<a href="mailto:{html.escape(address)}">{html.escape(address)}</a>'
+    return html.escape(address)
+
+
+def build_values(cfg: dict[str, str], *, year: int | None = None) -> dict[str, str]:
+    """Turn raw operator config into the exact strings substituted into the templates."""
+    contact_href, contact_label = resolve_contact(cfg.get("CONTACT", ""))
+    now_year = year if year is not None else datetime.datetime.now(datetime.timezone.utc).year
     values = {
-        "VENDOR_NAME": vendor_name,
+        "VENDOR_NAME": html.escape(cfg.get("VENDOR_NAME") or "CBv2"),
         "CONTACT_HREF": contact_href,
         "CONTACT_LABEL": contact_label,
-        "YEAR": str(year if year is not None else datetime.datetime.now(datetime.timezone.utc).year),
+        "YEAR": str(now_year),
+        "LEGAL_UPDATED": datetime.datetime.now(datetime.timezone.utc).strftime("%d %B %Y"),
     }
-    assert set(values) == set(PLACEHOLDERS)
-    html = template
+    for key in ("EMAIL_SALES", "EMAIL_SECURITY", "EMAIL_PRIVACY", "EMAIL_SUPPORT"):
+        values[key] = email_link(cfg.get(key, ""), FIELDS[key][1])
+    for key in ("LEGAL_ENTITY", "LEGAL_ADDRESS", "LEGAL_REG", "LEGAL_JURISDICTION"):
+        raw = cfg.get(key, "").strip()
+        # Addresses are commonly multi-line; keep the line breaks the operator typed.
+        values[key] = html.escape(raw).replace("\n", "<br>") if raw else unset(FIELDS[key][1])
+    return values
+
+
+def render(layout: str, body: str, values: dict[str, str], *, slug: str) -> str:
+    """Pour a page body into the layout, substitute everything, and prove nothing survived."""
+    page = layout.replace("{{CONTENT}}", body)
     for name, value in values.items():
-        html = html.replace("{{" + name + "}}", value)
-    if "{{" in html or "}}" in html:
+        page = page.replace("{{" + name + "}}", value)
+    leftover = sorted(set(re.findall(r"\{\{([A-Z_]+)\}\}", page)))
+    if leftover or "{{" in page or "}}" in page:
         raise SystemExit(
-            "build: template still contains an unsubstituted placeholder after rendering.\n"
-            "       Add it to PLACEHOLDERS in build.py, or remove it from src/index.html."
+            f"build: {slug}.html still contains unsubstituted placeholder(s): "
+            f"{', '.join(leftover) or '{{...}}'}\n"
+            "       Add the field to FIELDS/build_values in build.py, or remove it from the "
+            "template."
         )
-    return html
+    return page
 
 
 def _prepare_out(out: Path) -> None:
@@ -105,12 +176,25 @@ def _prepare_out(out: Path) -> None:
         shutil.rmtree(p) if p.is_dir() else p.unlink()
 
 
-def build(out: Path, *, vendor_name: str, contact: str, src: Path = SRC_DIR) -> Path:
-    """Render the page into `out` alongside the vendored front-end libraries."""
-    template = (src / "index.html").read_text(encoding="utf-8")
-    html = render(template, vendor_name=vendor_name, contact=contact)
+def build(out: Path, cfg: dict[str, str], *, src: Path = SRC_DIR) -> Path:
+    """Render every page into `out` alongside the vendored front-end libraries."""
+    layout = (src / "layout.html").read_text(encoding="utf-8")
+    values = build_values(cfg)
+    vendor = values["VENDOR_NAME"]
+
+    pages = {}
+    for slug, (title, desc) in PAGES.items():
+        body = (src / "pages" / f"{slug}.html").read_text(encoding="utf-8")
+        per_page = dict(values,
+                        PAGE_TITLE=html.escape(title.format(vendor=vendor)),
+                        PAGE_DESC=html.escape(desc.format(vendor=vendor)))
+        pages[slug] = render(layout, body, per_page, slug=slug)
+
+    # Render everything before writing anything: a template error must not leave a half-built
+    # directory behind, since `dist/` may be what a web server is currently serving.
     _prepare_out(out)
-    (out / "index.html").write_text(html, encoding="utf-8")
+    for slug, page in pages.items():
+        (out / f"{slug}.html").write_text(page, encoding="utf-8")
     # The vendored tree ships with its licence and notice files; copy it whole so attribution
     # travels with the code we redistribute rather than being trimmed to "just the .js".
     shutil.copytree(src / "vendor", out / "vendor")
@@ -124,20 +208,25 @@ def build(out: Path, *, vendor_name: str, contact: str, src: Path = SRC_DIR) -> 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Build the static CBv2 site into dist/.")
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT, help="output directory (default: ./dist)")
-    ap.add_argument("--vendor-name", default=os.environ.get("CBSITE_VENDOR_NAME", "CBv2"),
-                    help="product/vendor name (env: CBSITE_VENDOR_NAME)")
-    ap.add_argument("--contact", default=os.environ.get("CBSITE_CONTACT", ""),
-                    help="'Request access' target: email, URL, or free text (env: CBSITE_CONTACT)")
+    for key, (env, what, default) in FIELDS.items():
+        ap.add_argument(f"--{key.lower().replace('_', '-')}",
+                        default=os.environ.get(env, default),
+                        help=f"{what} (env: {env})")
     args = ap.parse_args(argv)
 
-    out = build(args.out.resolve(), vendor_name=args.vendor_name, contact=args.contact)
-    href, label = resolve_contact(args.contact)
-    print(f"built  {out}")
-    print(f"  vendor name : {args.vendor_name}")
+    cfg = {key: getattr(args, key.lower()) or "" for key in FIELDS}
+    out = build(args.out.resolve(), cfg)
+
+    href, label = resolve_contact(cfg["CONTACT"])
+    print(f"built  {out}  ({len(PAGES)} pages)")
+    print(f"  vendor name : {cfg['VENDOR_NAME'] or 'CBv2'}")
     print(f"  contact     : {label}  ->  {href}")
-    if not args.contact.strip():
-        print("  note: no contact configured — the call to action is an inert prompt.\n"
-              "        Set CBSITE_CONTACT (or --contact) before deploying.", file=sys.stderr)
+    missing = [f"{FIELDS[k][0]} ({FIELDS[k][1]})" for k in FIELDS if not cfg[k].strip()]
+    if missing:
+        print("  unset — these render as a visible 'not configured' marker, not as filler:",
+              file=sys.stderr)
+        for m in missing:
+            print(f"    {m}", file=sys.stderr)
     return 0
 
 

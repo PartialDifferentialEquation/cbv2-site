@@ -1,0 +1,80 @@
+<main class="page">
+  <p class="cap"><span class="fx">Contact</span></p>
+  <h1>Talk to a person.</h1>
+
+  <p class="lede">{{VENDOR_NAME}} is sold through a contract, not a checkout. Access starts with a
+    conversation about what you are shipping and to whom.</p>
+
+  <h2>Where to write</h2>
+  <dl class="kv">
+    <dt>Sales &amp; access</dt>
+    <dd>{{EMAIL_SALES}}<br>Evaluations, pricing, contracts, procurement paperwork.</dd>
+
+    <dt>Security</dt>
+    <dd>{{EMAIL_SECURITY}}<br>Vulnerability reports. We would rather hear it from you than read it
+      elsewhere — report in good faith and we will not pursue you for it.</dd>
+
+    <dt>Privacy &amp; data</dt>
+    <dd>{{EMAIL_PRIVACY}}<br>Data-subject requests, DPA and sub-processor questions, transfer
+      mechanisms.</dd>
+
+    <dt>Support</dt>
+    <dd>{{EMAIL_SUPPORT}}<br>For customers under an active agreement.</dd>
+  </dl>
+
+  <h2>How pricing works</h2>
+  <p>There is no public price list, because there is no configuration where the number is the same
+    for two customers. What is fixed is the <em>shape</em> of the bill, and that is worth stating
+    up front:</p>
+  <dl class="kv">
+    <dt>Basis</dt>
+    <dd>A contract sets the term, the currency and the per-unit rates. Invoices are generated from
+      the usage your deployment already meters — no separate reporting, no honour system.</dd>
+
+    <dt>Metered quantity</dt>
+    <dd><strong>Peak, not cumulative.</strong> A billing period is charged on the highest count
+      reached during it, so churning entitlements up and down does not inflate the invoice.</dd>
+
+    <dt>Lifecycle</dt>
+    <dd>Draft → issued → paid, with the underlying usage attached to the invoice, so any line can
+      be traced back to the metering that produced it.</dd>
+
+    <dt>Payment</dt>
+    <dd>Recorded <strong>out of band</strong> — wire, ACH or purchase order. Net terms are set by
+      the contract.</dd>
+
+    <dt>No payment processor</dt>
+    <dd>We do not collect or store card details and no third-party processor sits inside the trust
+      boundary. That keeps the platform out of PCI scope and consistent with the
+      keys-in-your-custody posture — the same reason the licensing plane never sees your keys.</dd>
+  </dl>
+  <p>Ask for a quote with your rough shape — number of protected artifacts, number of customer
+    deployments, which tiers — and you will get a rate card rather than a range.</p>
+
+  <h2>Before you ask</h2>
+  <ul>
+    <li><strong>Export control.</strong> {{VENDOR_NAME}} is encryption software and is treated as
+      controlled under the US Export Administration Regulations. Some destinations, end-users and
+      end-uses are restricted regardless of commercial terms. Tell us where it will be deployed
+      early — it is cheaper to find out now than at signature.</li>
+    <li><strong>Regulated environments.</strong> If you need a FIPS-validated cryptographic module,
+      say so at the outset: it constrains the build and the platform it runs on.</li>
+    <li><strong>What we cannot promise.</strong> If your requirement is that a customer who owns
+      the machine cannot recover your logic, read
+      <a href="./about.html">what the ceiling is</a> before the call. That requirement is met by
+      the split and enclave tiers or not at all.</li>
+  </ul>
+
+  <h2>Entity</h2>
+  <dl class="kv">
+    <dt>Registered name</dt><dd>{{LEGAL_ENTITY}}</dd>
+    <dt>Registered address</dt><dd>{{LEGAL_ADDRESS}}</dd>
+    <dt>Registration</dt><dd>{{LEGAL_REG}}</dd>
+    <dt>Governing law</dt><dd>{{LEGAL_JURISDICTION}}</dd>
+  </dl>
+
+  <div class="row">
+    <a class="btn on" href="{{CONTACT_HREF}}"><span class="fx">Request access</span></a>
+    <a class="btn" href="./legal.html"><span class="fx">Terms &amp; privacy</span></a>
+  </div>
+</main>

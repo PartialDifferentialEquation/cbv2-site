@@ -1,0 +1,134 @@
+<main class="page">
+  <p class="cap"><span class="fx">Legal</span></p>
+  <h1>Terms &amp; privacy.</h1>
+
+  <div class="notice">
+    <b>Draft — not yet in force</b>
+    <p>This is a working draft published for transparency, <strong>not an executed agreement and
+      not legal advice</strong>. It has not been reviewed by counsel and is not the instrument any
+      current relationship runs on.</p>
+    <p>Where a signed agreement exists between you and {{LEGAL_ENTITY}}, that agreement governs and
+      this page has no effect on it. Nothing here creates rights or obligations for either side.</p>
+  </div>
+
+  <p class="lede">Last updated {{LEGAL_UPDATED}}. Questions about either half go to
+    {{EMAIL_PRIVACY}}.</p>
+
+  <h2>1. Terms of service</h2>
+
+  <h3>1.1 What is licensed</h3>
+  <p>A {{VENDOR_NAME}} licence grants the right to run the software and determines which features
+    and limits are enabled. It is a cryptographic authorization and a feature gate. It is
+    <strong>not</strong> a copy-protection mechanism for the platform itself, and it does not
+    convey ownership of anything.</p>
+
+  <h3>1.2 Enforcement is fail-soft, by design</h3>
+  <p>Licence enforcement degrades rather than terminates. A lapsed or suspended licence blocks new
+    packaging and new entitlement issuance; it does not stop a running deployment, and there are
+    grace windows before any degradation takes effect. This is deliberate: a vendor able to halt
+    your production is a single point of failure you should not be asked to accept.</p>
+
+  <h3>1.3 Your data and your keys</h3>
+  <p>The control plane runs in your infrastructure. You hold the signing root and the content keys.
+    We cannot decrypt your artifacts, and we do not receive them. Loss of your key material is
+    unrecoverable by us — that is a property of the design, not an operational shortcoming, and
+    key custody is your responsibility.</p>
+
+  <h3>1.4 Acceptable use</h3>
+  <p>You may not use the platform to distribute malware, to conceal unlawful functionality from the
+    people running it, or to evade sanctions or export restrictions. Protecting your intellectual
+    property is the purpose; hiding harm from the operator of a machine is not.</p>
+
+  <h3>1.5 Export control</h3>
+  <p>The software is encryption software and is treated as controlled under the US Export
+    Administration Regulations. You are responsible for compliance with export, re-export and
+    transfer restrictions applicable to your deployments, including restricted destinations,
+    end-users and end-uses. Tell us where you intend to deploy before contracting.</p>
+
+  <h3>1.6 Warranties and the honest ceiling</h3>
+  <p>We warrant that the platform performs the functions described in the documentation. We
+    expressly <strong>do not</strong> warrant secrecy of software executing on hardware controlled
+    by a third party. Client-side execution cannot provide secrecy against a party who can inspect
+    the machine, and no configuration of the <code>open</code> or <code>local</code> tiers should be
+    relied upon for it — those tiers raise the cost of reverse-engineering, they do not prevent
+    it. Confidentiality against a host that owns the machine is addressed only by
+    the <code>split</code> and <code>enclave</code> tiers, and the enclave tier's hardware
+    attestation is not enforced in the current release.</p>
+
+  <h3>1.7 Liability</h3>
+  <p>Limits of liability, indemnities, service levels and term are set by the executed agreement.
+    This page does not state them and should not be read as offering any.</p>
+
+  <h3>1.8 Governing law</h3>
+  <p>{{LEGAL_JURISDICTION}}.</p>
+
+  <h2>2. Privacy</h2>
+
+  <h3>2.1 The short version</h3>
+  <p>The licensing service receives <strong>metering signals only</strong>. Usage counts, licence
+    identifiers, deployment identifiers and timestamps. It does not receive your keys, your
+    entitlement secrets, your artifacts, or any content processed by them. A heartbeat containing
+    anything secret-shaped is rejected before it is stored.</p>
+
+  <h3>2.2 What is collected</h3>
+  <ul>
+    <li><strong>Deployment records</strong> — an organization identifier, a deployment identifier,
+      and the deployment's public key, created when a deployment is activated.</li>
+    <li><strong>Usage snapshots</strong> — periodic counts used to generate invoices, with the
+      timestamp they were reported.</li>
+    <li><strong>Licence records</strong> — issuance, renewal, suspension and revocation events.</li>
+    <li><strong>Correspondence</strong> — what you send to the addresses on the
+      <a href="./contact.html">contact page</a>.</li>
+  </ul>
+  <p>Personal data is incidental rather than central here: these are machine and organization
+    identifiers, not end-user profiles. Where an identifier can be linked to an individual, it is
+    treated as personal data.</p>
+
+  <h3>2.3 Roles</h3>
+  <p>For the vendor-side licensing and billing records described above, {{LEGAL_ENTITY}} acts as
+    <strong>controller</strong>. For anything processed inside your own deployment — your audit
+    log, your entitlements, your artifacts — you are the controller and we are not a processor,
+    because we never receive it.</p>
+
+  <h3>2.4 Your rights</h3>
+  <p>Subject to applicable law you may request access, correction, erasure, restriction,
+    portability, or object to processing. Write to {{EMAIL_PRIVACY}}.</p>
+  <div class="notice">
+    <b>A limit we will not paper over</b>
+    <p>The audit log is a <strong>hash chain</strong>: each entry commits to the one before it, so
+      deleting or editing an entry is detectable — which is the entire point of it as evidence.
+      That property is in direct tension with a right to erasure over any identifier recorded in
+      it.</p>
+    <p>Deleting a row would break the chain and destroy the integrity guarantee for every entry
+      after it. The intended resolution is to store identifiers in a form that can be rendered
+      permanently unreadable without altering the chain, so an erasure request can be honoured
+      without falsifying the record. <strong>That change is not yet implemented</strong>, and the
+      audit log lives in your infrastructure rather than ours, so today this is a limitation you
+      inherit as its controller. We would rather tell you than let you discover it during an
+      audit.</p>
+  </div>
+
+  <h3>2.5 Retention</h3>
+  <p>Usage snapshots and invoices are retained for as long as needed to bill and to satisfy
+    statutory record-keeping, which in most jurisdictions is measured in years rather than months.
+    Deployment and licence records are retained for the life of the relationship. Correspondence is
+    retained for as long as it is useful to the matter it concerns.</p>
+
+  <h3>2.6 Transfers and sub-processors</h3>
+  <p>Where data crosses borders it is transferred under an appropriate mechanism, documented in the
+    data processing agreement rather than asserted here. Ask {{EMAIL_PRIVACY}} for the current
+    sub-processor list before you assume one.</p>
+
+  <h3>2.7 This website</h3>
+  <p>This site is static. It sets no cookies, runs no analytics, and embeds no trackers. The one
+    third-party request it makes is to Google Fonts for the typeface; blocking it changes the
+    typography and nothing else. Nothing you do on this page is recorded by us.</p>
+
+  <h3>2.8 Security reports</h3>
+  <p>Send them to {{EMAIL_SECURITY}}. Report in good faith and we will not pursue you for it.</p>
+
+  <div class="row">
+    <a class="btn on" href="{{CONTACT_HREF}}"><span class="fx">Request access</span></a>
+    <a class="btn" href="./contact.html"><span class="fx">Contact</span></a>
+  </div>
+</main>

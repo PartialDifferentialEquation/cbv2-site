@@ -3,12 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{VENDOR_NAME}} — control your software after you ship it</title>
-<meta name="description" content="Package, license, meter and revoke proprietary software and AI models running on infrastructure you don't own. Per-customer attribution, per-run authorization, instant revocation, and a crown jewel that never leaves your server.">
+<title>{{PAGE_TITLE}}</title>
+<meta name="description" content="{{PAGE_DESC}}">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2307080c'/%3E%3Ctext x='16' y='22' font-size='15' font-family='monospace' font-weight='bold' fill='%235ad2f5' text-anchor='middle'%3ECB%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<script>
+  /* Synchronous and tiny, on purpose. The module script below is deferred, so waiting for it
+     would show the page first and *then* cover it — the transition has to be in place before
+     the first paint or it reads as a glitch.
+
+     Two safety properties matter more than the effect itself:
+       - with JavaScript off this never runs, `.xfer` stays `display:none`, and every link is
+         an ordinary anchor;
+       - if the module never executes (network error, syntax error, blocked import) the
+         timeout uncovers the page anyway. An overlay that can outlive its script is a way to
+         make a site permanently unusable, so it gets a deadline rather than a promise. */
+  (function () {
+    try {
+      if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) { return }
+      var d = document.documentElement
+      d.classList.add('xfer-cover')
+      setTimeout(function () { d.classList.remove('xfer-cover') }, 1800)
+    } catch (e) { /* never let the transition break the page */ }
+  })()
+</script>
 <style>
   /* A deliberately single-look design: near-black ground, one statement per screen,
      tte.js carrying the motion. Colours are painted explicitly rather than inherited. */
@@ -111,165 +131,82 @@
   /* tte.js overlays an aria-hidden canvas; the source text stays in the DOM, so with no
      JS (or with reduced motion) the page is simply read as static type. */
   @media (prefers-reduced-motion: reduce) { html { scroll-behavior:auto; } }
+  /* ── page-transition overlay ───────────────────────────────────────────────────── */
+  /* Hidden unless a class is set by script, so a no-JS visitor never meets it. The grid
+     text is transparent because tte.js paints the visible characters onto its canvas; the
+     source only exists to give the library a character grid to work from. */
+  /* pointer-events:none is not cosmetic. The overlay lingers for a beat at opacity 0 while
+     it fades out, and a fully transparent element still swallows clicks — which would make
+     links dead for ~200ms after every arrival. It never needs input of its own. */
+  #xfer { position:fixed; inset:0; z-index:200; background:var(--bg); display:none;
+    opacity:0; pointer-events:none; transition:opacity .17s linear; }
+  html.xfer-cover #xfer { display:block; }
+  html.xfer-cover #xfer { opacity:1; }
+  #xfer-grid { margin:0; width:100%; height:100%; font-family:var(--mono); line-height:1.1;
+    color:transparent; white-space:pre; overflow:hidden; }
+
+  /* ── secondary pages (about / contact / legal) ─────────────────────────────────── */
+  header .mark { color:var(--fg); text-decoration:none; }
+  footer .foot-nav a { color:var(--fg-soft); }
+  .page { max-width:74ch; margin:0 auto; padding:clamp(110px,16vh,190px) clamp(20px,5vw,80px)
+    clamp(70px,10vh,120px); }
+  .page h1 { font-family:var(--mono); font-weight:700; letter-spacing:-.01em;
+    font-size:clamp(30px,5.2vw,60px); line-height:1.04; margin:0 0 clamp(20px,3vw,34px); }
+  .page h2 { font-family:var(--mono); font-size:clamp(15px,1.5vw,19px); text-transform:uppercase;
+    letter-spacing:.14em; margin:clamp(46px,6vw,72px) 0 16px; padding-top:18px;
+    border-top:1px solid var(--rule); }
+  .page h3 { font-family:var(--mono); font-size:15px; letter-spacing:.04em; margin:28px 0 8px; }
+  .page p, .page li { color:var(--fg-soft); font-size:16.5px; line-height:1.62; }
+  .page p { margin:0 0 16px; }
+  .page ul { margin:0 0 16px; padding-left:20px; }
+  .page li { margin-bottom:8px; }
+  .page strong { color:var(--fg); font-weight:500; }
+  .page a { color:var(--accent); }
+  .page .lede { font-size:clamp(17px,1.7vw,21px); color:var(--fg); margin-bottom:clamp(28px,4vw,44px); }
+
+  /* key/value blocks: contact routes, legal identity, billing terms */
+  .kv { display:grid; grid-template-columns:200px 1fr; gap:12px 24px; margin:0 0 22px;
+    border-top:1px solid var(--rule); padding-top:18px; }
+  .kv dt { font-family:var(--mono); font-size:12.5px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--fg-faint); }
+  .kv dd { margin:0; color:var(--fg-soft); font-size:16px; }
+  .kv dd a { color:var(--accent); }
+  @media (max-width:640px) { .kv { grid-template-columns:1fr; gap:4px 0; }
+    .kv dd { margin-bottom:14px; } }
+
+  /* An operator value that has not been configured. Deliberately conspicuous: a marketing
+     site inventing a registered address or a support mailbox is worse than one admitting the
+     field is empty, and this makes an unfilled build obvious rather than plausible. */
+  .unset { font-family:var(--mono); font-size:12.5px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--warn); border:1px dashed var(--warn); padding:2px 8px; white-space:nowrap; }
+
+  .notice { border:1px solid var(--warn); border-left-width:3px; padding:18px 22px;
+    margin:0 0 clamp(30px,4vw,44px); }
+  .notice p { margin:0; color:var(--fg); font-size:15.5px; }
+  .notice p + p { margin-top:10px; color:var(--fg-soft); }
+  .notice b { font-family:var(--mono); text-transform:uppercase; letter-spacing:.12em;
+    font-size:12.5px; color:var(--warn); display:block; margin-bottom:8px; }
 </style>
 </head>
 <body>
 
+<div id="xfer" aria-hidden="true"><pre id="xfer-grid"></pre></div>
+
 <header>
-  <span class="mark">{{VENDOR_NAME}}</span>
+  <a class="mark" href="./index.html">{{VENDOR_NAME}}</a>
   <span class="spacer"></span>
-  <a href="#claims">Our claims</a>
+  <a href="./about.html">About</a>
+  <a href="./contact.html">Contact</a>
+  <a href="./legal.html">Legal</a>
   <a href="{{CONTACT_HREF}}">Request access →</a>
 </header>
-
-<section class="screen" id="hero">
-  <div class="inner">
-    <p class="cap"><span class="fx">Secure distribution &amp; execution control</span></p>
-    <pre class="line" data-effect="decrypt" data-colors="#5ad2f5,#a78bfa,#f2f4f8">YOUR CODE RUNS
-ON THEIR MACHINES.</pre>
-    <p class="sub">{{VENDOR_NAME}} packages, licenses, meters and revokes proprietary software and
-      AI models running on infrastructure you don't own — with <strong>per-customer
-      attribution</strong>, <strong>per-run authorization</strong>, and a <strong>crown jewel that
-      never leaves your server</strong>.</p>
-    <div class="row">
-      <a class="btn on" href="{{CONTACT_HREF}}"><span class="fx">Request access</span></a>
-      <a class="btn" href="#problem"><span class="fx">See why</span></a>
-    </div>
-  </div>
-</section>
-
-<section class="screen" id="problem">
-  <div class="inner">
-    <p class="cap"><span class="fx">The problem</span></p>
-    <pre class="line" data-effect="scattered">YOU CAN'T SEE
-THE BOX.</pre>
-    <p class="sub">Their hardware, their admins, their backups. Once a build lands, you cannot say
-      who copied it, who leaked it, or how to stop it running.</p>
-    <div class="facts">
-      <div><div class="k">0</div><div class="v">Visibility into the machine your build runs on</div></div>
-      <div><div class="k">1</div><div class="v">Identical binary shipped to every customer</div></div>
-      <div><div class="k">∞</div><div class="v">How long it keeps running after the contract ends</div></div>
-    </div>
-  </div>
-</section>
-
-<section class="screen" id="attribution">
-  <div class="inner">
-    <p class="cap"><span class="fx">Control 01 — Attribution</span></p>
-    <pre class="line" data-effect="binarypath">EVERY BUILD IS
-WATERMARKED.</pre>
-    <p class="sub">Source, native binary, JS, JVM or model weights — each customer's copy carries a
-      per-customer mark. A leak found anywhere resolves back to exactly one customer.</p>
-  </div>
-</section>
-
-<section class="screen" id="authorization">
-  <div class="inner">
-    <p class="cap"><span class="fx">Control 02 — Authorization</span></p>
-    <pre class="line" data-effect="errorcorrect">NO LICENCE,
-NO RUN.</pre>
-    <p class="sub">Content keys release just-in-time, only after an entitlement check — enforced at
-      download and at every single key release.</p>
-  </div>
-</section>
-
-<section class="screen" id="revocation">
-  <div class="inner">
-    <p class="cap"><span class="fx">Control 03 — Revocation</span></p>
-    <pre class="line" data-effect="burn">REVOKE.
-NEXT RUN DENIED.</pre>
-    <p class="sub">A kill switch at the stable handle — customer, deployment or licence. It cannot
-      be outrun by a rotating identifier.</p>
-  </div>
-</section>
-
-<section class="screen" id="split">
-  <div class="inner">
-    <p class="cap"><span class="fx">Control 04 — Split</span></p>
-    <pre class="line" data-effect="laseretch">THE CROWN JEWEL
-NEVER SHIPS.</pre>
-    <p class="sub">Your secret step stays server-side and is called at runtime. Even a fully
-      reverse-engineered client is missing the actual computation — it only knows how to ask.</p>
-  </div>
-</section>
-
-<section class="screen" id="tiers">
-  <div class="inner">
-    <p class="cap"><span class="fx">Protection tiers</span></p>
-    <pre class="line sm" data-effect="wipe">CHOOSE YOUR CEILING.</pre>
-    <div class="tiers">
-      <div class="t-open"><b>open</b><span>Signed and watermarked. Tamper-evident provenance — no confidentiality.</span></div>
-      <div class="t-local"><b>local</b><span>Encrypted, decrypted in memory, gated per run. Raises extraction cost; a determined host owner can still recover it.</span></div>
-      <div class="t-split"><b>split</b><span>The valuable computation never ships. Real secrecy of the secret step.</span></div>
-      <div class="t-enclave"><b>enclave</b><span>The jewel runs server-side in a hardware TEE, attested before any key release.</span></div>
-    </div>
-  </div>
-</section>
-
-<section class="screen" id="languages">
-  <div class="inner">
-    <p class="cap"><span class="fx">Reach</span></p>
-    <pre class="line sm" data-effect="print">ANY LANGUAGE.
-ONE PIPELINE.</pre>
-    <div class="langs">
-      <span><span class="fx">Python</span></span><span><span class="fx">Rust</span></span><span><span class="fx">Go</span></span><span><span class="fx">JavaScript</span></span><span><span class="fx">TypeScript</span></span>
-      <span><span class="fx">JVM</span></span><span><span class="fx">.NET</span></span><span><span class="fx">Native PE / ELF / Mach-O</span></span><span><span class="fx">ONNX · safetensors</span></span>
-    </div>
-    <p class="sub"><strong>cbget</strong> resolves, verifies the pinned signature, entitlement-gates,
-      then runs. Ship through npm, Homebrew or winget — the registry holds a launcher only, never
-      your protected bytes.</p>
-  </div>
-</section>
-
-<section class="screen" id="model">
-  <div class="inner">
-    <p class="cap"><span class="fx">Deployment</span></p>
-    <pre class="line" data-effect="highlight">KEYS STAY
-WITH YOU.</pre>
-    <p class="sub">The control plane runs inside your customer's infrastructure — their keys, their
-      entitlements, their crown-jewel calls. The vendor plane only licenses deployments and meters
-      usage; the heartbeat carries <strong>usage signals only</strong>, never keys, secrets or
-      plaintext.</p>
-  </div>
-</section>
-
-<section class="screen" id="claims">
-  <div class="inner">
-    <p class="cap"><span class="fx">Our claims</span></p>
-    <pre class="line" data-effect="errorcorrect" data-colors="#ffb454,#f2f4f8">NO SECURITY
-THEATER.</pre>
-    <p class="sub">Most vendors here will tell you their protection is absolute. It never is. Here
-      is exactly where our limits are, so you can decide with your eyes open.</p>
-    <div class="limits">
-      <div><h3>Client-side isn't secrecy</h3>
-        <p>Code running on a machine someone else owns can, given enough effort, be
-          reverse-engineered. <code>open</code> and <code>local</code> raise extraction cost — they
-          don't make it unachievable, and we won't pretend otherwise.</p></div>
-      <div><h3>Real secrecy lives server-side</h3>
-        <p>If a computation must stay secret, it belongs in <code>split</code> or
-          <code>enclave</code>. That's the honest boundary, and the one we build toward.</p></div>
-      <div><h3>Offline weakens revocation</h3>
-        <p>Air-gapped deployments run on time-boxed leases, so revocation lands at lease expiry or
-          reconnect rather than instantly. You choose the trade; we document it.</p></div>
-    </div>
-  </div>
-</section>
-
-<section class="screen" id="cta">
-  <div class="inner">
-    <p class="cap"><span class="fx">Get started</span></p>
-    <pre class="line" data-effect="matrix" data-colors="#4fd39b,#5ad2f5,#f2f4f8">REQUEST ACCESS.</pre>
-    <p class="sub">Attribution, authorization, revocation and split — on infrastructure you don't
-      control, with a vendor that tells you where the line is.</p>
-    <div class="row"><a class="btn on" href="{{CONTACT_HREF}}"><span class="fx">Request access</span></a></div>
-  </div>
-</section>
-
+{{CONTENT}}
 <footer>
   <span>© {{YEAR}} {{VENDOR_NAME}} — secure distribution &amp; execution control</span>
+  <span class="foot-nav"><a href="./about.html">About</a> · <a href="./contact.html">Contact</a>
+    · <a href="./legal.html">Terms &amp; privacy</a></span>
   <span>{{CONTACT_LABEL}}</span>
 </footer>
-
 <script type="module">
   // Relative, NOT '/vendor/...'. GitHub Pages serves a project site under a subpath
   // (/<repo>/), where a root-absolute specifier resolves to the domain root and 404s.
@@ -283,14 +220,100 @@ THEATER.</pre>
   // browser test. Nothing reads it at runtime; it is a diagnostic seam, not behaviour.
   const mark = (v) => { document.documentElement.dataset.tte = v }
   mark('module')
+  const known = new Set(effectNames())
+
+  // ── full-screen decrypt on arrival ───────────────────────────────────────────────
+  // Every page opens behind a full-screen grid of random hex that decrypts away, using the
+  // same library as the rest of the site — so moving between pages reads as decrypting into
+  // the new one. It costs nothing but a covered first paint.
+  //
+  // It is deliberately arrival-only. An earlier version also intercepted link clicks to run
+  // an "encrypt" effect *before* navigating, and that could not be made reliable: in browser
+  // testing the click was intermittently swallowed with no navigation request issued at all,
+  // leaving the visitor stuck on the page with no error. A decorative transition is not worth
+  // a link that sometimes does nothing, so links are now ordinary anchors that the browser
+  // handles itself, and nothing here can sit between a click and the page it asks for.
+  //
+  // What remains still cannot strand anyone: the overlay uncovers on a fixed timer rather
+  // than when an animation finishes, and the head script's failsafe removes it even if this
+  // module never runs.
+  const root = document.documentElement
+  const xfer = document.getElementById('xfer')
+  const xferGrid = document.getElementById('xfer-grid')
+
+  const fillGrid = () => {
+    // The renderer stretches the character grid across the element's box, so the grid only
+    // needs a plausible aspect ratio, not real font metrics. Rows are capped so a very tall
+    // or very wide window cannot produce a cell count that costs frames.
+    const rows = Math.max(12, Math.min(30, Math.round(window.innerHeight / 34)))
+    const ratio = (window.innerWidth / Math.max(1, window.innerHeight)) / 0.47
+    const cols = Math.max(20, Math.min(120, Math.round(rows * ratio)))
+    const alphabet = '0123456789ABCDEF#$%&*+=/\\|<>[]{}'
+    let out = ''
+    for (let r = 0; r < rows; r++) {
+      let line = ''
+      for (let c = 0; c < cols; c++) {
+        line += alphabet[(Math.random() * alphabet.length) | 0]
+      }
+      out += line + (r < rows - 1 ? '\n' : '')
+    }
+    xferGrid.textContent = out
+  }
+
+  // One controller at a time on the shared overlay grid: mounting a second effect over a live
+  // one wraps an already-wrapped element and leaves the DOM in a state neither can clean up.
+  let overlayFx = null
+  const clearOverlay = () => {
+    if (overlayFx) { try { overlayFx.destroy() } catch (e) {} ; overlayFx = null }
+  }
+
+  const runOverlay = (effect, duration) => {
+    clearOverlay()
+    try {
+      fillGrid()
+      overlayFx = createTextEffect(xferGrid, {
+        effect: known.has(effect) ? effect : 'decrypt',
+        colors: ['#5ad2f5', '#a78bfa'], duration, seed: (Math.random() * 9999) | 0,
+        autoplay: false,
+      })
+      void overlayFx.restart()
+    } catch (err) {
+      console.warn('[tte] transition effect failed; skipping it', err)
+      overlayFx = null
+    }
+  }
+
+  // Arrival: the head script already covered the page, so decrypt, then uncover. The uncover
+  // is on a timer rather than chained off the effect's promise -- the page must become usable
+  // on a schedule, not whenever an animation decides it is finished.
+  const arrive = () => {
+    if (!root.classList.contains('xfer-cover')) { return }
+    runOverlay('decrypt', 620)
+    setTimeout(() => {
+      xfer.style.opacity = '0'
+      setTimeout(() => { clearOverlay(); root.classList.remove('xfer-cover') }, 200)
+    }, 640)
+  }
+
+  // Departure: encrypt over the page, then navigate. 420ms is the ceiling — a transition a
+  // visitor notices waiting on is worse than no transition.
+  // Restoring from the back/forward cache re-runs no scripts, so a page that went into it
+  // while still covered would come back covered. Clear it explicitly.
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted) {
+      clearOverlay()
+      root.classList.remove('xfer-cover')
+      xfer.style.opacity = ''
+    }
+  })
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (!reduce) { arrive() }
   const lines = Array.from(document.querySelectorAll('.line[data-effect]'))
 
   // Reduced motion: leave every statement as plain static type. The source text is already in
   // the DOM, so this is simply "do nothing" — no fallback rendering needed.
-  if (!reduce && lines.length && 'IntersectionObserver' in window) {
+  if (!reduce && 'IntersectionObserver' in window) {
     mark('bootstrapping')
-    const known = new Set(effectNames())
     const controllers = new Map()
 
     const build = (el) => {

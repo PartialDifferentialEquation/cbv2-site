@@ -1,0 +1,82 @@
+<main class="page">
+  <p class="cap"><span class="fx">About</span></p>
+  <h1>What {{VENDOR_NAME}} actually does.</h1>
+
+  <p class="lede">{{VENDOR_NAME}} is a distribution, licensing and execution-control platform for
+    proprietary software and AI models that run on infrastructure their owner does not control.
+    It is built around a claim it can keep, and it is explicit about the one it cannot.</p>
+
+  <h2>The problem</h2>
+  <p>Software that leaves your servers stops being yours in any enforceable sense. A customer's
+    hardware, their administrators, their backups, their forks. Once a build lands you cannot say
+    with evidence who has it, whether it should still run, or what it did last Tuesday.</p>
+  <p>The usual answer is obfuscation sold as secrecy. It buys time against a casual look and
+    nothing at all against a determined one, and every vendor who sells it as more than that is
+    borrowing credibility they will have to repay.</p>
+
+  <h2>What it enforces</h2>
+  <ul>
+    <li><strong>Attribution.</strong> Every customer's copy is watermarked at multiple points and
+      signed. A leaked artifact traces back to the customer it was issued to — source, native
+      binary, JavaScript, JVM bytecode or model weights alike.</li>
+    <li><strong>Authorization.</strong> Content keys are released just-in-time and only after an
+      entitlement check, so a copy on disk is not the same thing as a copy that runs.</li>
+    <li><strong>Revocation.</strong> A kill switch at the stable handle — customer, deployment or
+      licence. The next run is denied. It does not require reaching the machine.</li>
+    <li><strong>Evidence.</strong> A hash-chained, tamper-evident audit log whose verdict latches:
+      once tampering is recorded the log reports as broken permanently. Exportable for SIEM and
+      for auditors.</li>
+  </ul>
+
+  <h2>Where the ceiling is</h2>
+  <p>Client-side execution cannot deliver mathematical secrecy. If code runs on a machine somebody
+    else owns, that person can, with enough effort, recover what it does. No amount of packing,
+    obfuscation or licence checking changes that, and any product claiming otherwise is describing
+    a hope rather than a mechanism.</p>
+  <p>Two tiers exist precisely because of it. <strong>split</strong> keeps the valuable computation
+    on your own server and calls it at runtime, so a fully reverse-engineered client is still
+    missing the part that matters. <strong>enclave</strong> runs that computation inside a hardware
+    trusted execution environment, attested before any key is released — the only configuration
+    that offers real secrecy against a host who owns the box.</p>
+  <div class="notice">
+    <b>Stated plainly</b>
+    <p>The enclave tier's hardware attestation is not yet enforced in the shipping product. Its
+      quote backend is scaffolding, and the tier is not sold as delivering secrecy today.</p>
+    <p>We would rather lose a deal to that sentence than win one without it.</p>
+  </div>
+
+  <h2>The four tiers</h2>
+  <div class="tiers">
+    <div class="t-open"><b>open</b><span>Signed and watermarked. Tamper-evident provenance — no
+      confidentiality.</span></div>
+    <div class="t-local"><b>local</b><span>Encrypted, decrypted in memory, gated per run. Raises
+      extraction cost; a determined host owner can still recover it.</span></div>
+    <div class="t-split"><b>split</b><span>The valuable computation never ships. Real secrecy of
+      the secret step.</span></div>
+    <div class="t-enclave"><b>enclave</b><span>The jewel runs server-side in a hardware TEE,
+      attested before any key release.</span></div>
+  </div>
+
+  <h2>How it is deployed</h2>
+  <p>The control plane runs <strong>inside your infrastructure</strong>. Your keys, your entitlement
+    database, your audit log. We do not hold your signing root, we cannot decrypt your artifacts,
+    and there is no configuration in which your protected bytes pass through us.</p>
+  <p>What is hosted is the small vendor-side plane that licenses your deployment and meters it for
+    billing. The heartbeat it sends carries <strong>usage counts only</strong> — never keys, never
+    entitlement secrets, never artifact contents. A payload with anything secret-shaped in it is
+    rejected before any state is touched. Even a fully compromised licensing service could mint
+    licences and read usage totals, and nothing further.</p>
+  <p>Licence enforcement is deliberately <strong>fail-soft</strong>. A lapsed licence blocks new
+    packaging and new entitlements; it never bricks a running deployment. A vendor who can stop
+    your production is a risk you should not accept, so we made it something we cannot do.</p>
+
+  <h2>Reach</h2>
+  <p>Python, Rust, Go, JavaScript, TypeScript, JVM, .NET, native PE/ELF/Mach-O binaries, and ONNX
+    or safetensors model weights. Distribution goes through the package managers your teams already
+    use — the registry holds a launcher, never your protected bytes.</p>
+
+  <div class="row">
+    <a class="btn on" href="{{CONTACT_HREF}}"><span class="fx">Request access</span></a>
+    <a class="btn" href="./contact.html"><span class="fx">Contact</span></a>
+  </div>
+</main>

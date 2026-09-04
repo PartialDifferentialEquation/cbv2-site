@@ -1,6 +1,6 @@
 # cbv2-site — the public CBv2 marketing site
 
-The front page for CBv2, split out of
+Four pages — **home, about, contact, legal** — split out of
 [`cbv2-licensing`](https://github.com/PartialDifferentialEquation/cbv2-licensing), where it used
 to be rendered per request by the licensing API. It is now a **static build**: no server-side
 code on the public edge, no dependency on the licensing service being up, and nothing on this box
@@ -87,7 +87,7 @@ The project site is served from `https://<owner>.github.io/cbv2-site/`, a **subp
 root-absolute `/vendor/...` resolves to the domain root there and 404s — and the page still
 renders as static type, so the breakage looks like a design choice rather than a fault. Every
 asset path is therefore relative, and two tests
-(`test_module_imports_are_relative_and_resolve`, `test_no_root_absolute_asset_paths`) fail the
+(`test_module_imports_are_relative_and_resolve`, `test_no_root_absolute_paths`) fail the
 build if one goes absolute again. The same build works unchanged at a subpath, at a custom
 domain's root, and under `serve.py`.
 
@@ -95,19 +95,45 @@ For a **custom domain**, set it in Settings → Pages and commit a `CNAME` file 
 then add it to `build.py`'s copy step and to `OUTPUTS`, so it survives the build rather than
 being cleared on the next deploy.
 
+## Pages and layout
+
+`src/layout.html` holds the head, nav, footer and the effect bootstrap; each page is just a body
+in `src/pages/<slug>.html`, poured in at `{{CONTENT}}`. Add a page by dropping a file there and
+adding its slug, title and description to `PAGES` in `build.py`.
+
+| Page | What it carries |
+|---|---|
+| `index` | The landing page — one statement per full-height screen |
+| `about` | What the platform enforces, where the ceiling is, how it deploys |
+| `contact` | Routed addresses, how pricing is structured, registered entity details |
+| `legal` | Draft terms of service and privacy statement |
+
 ## Configuration
 
-Four placeholders in `src/index.html` are substituted at build time:
+Values are substituted at build time from flags or environment variables:
 
-| Placeholder | Source | Default |
+| Field | Env | Used for |
 |---|---|---|
-| `{{VENDOR_NAME}}` | `--vendor-name`, `CBSITE_VENDOR_NAME` | `CBv2` |
-| `{{CONTACT_HREF}}` / `{{CONTACT_LABEL}}` | `--contact`, `CBSITE_CONTACT` | *(neutral prompt)* |
-| `{{YEAR}}` | current UTC year | — |
+| `--vendor-name` | `CBSITE_VENDOR_NAME` | product name throughout (default `CBv2`) |
+| `--contact` | `CBSITE_CONTACT` | the "Request access" call to action |
+| `--email-sales` / `-security` / `-privacy` / `-support` | `CBSITE_EMAIL_*` | the routed addresses on the contact page |
+| `--legal-entity` / `-address` / `-reg` / `-jurisdiction` | `CBSITE_LEGAL_*` | registered identity and governing law |
 
 `--contact` takes an **email** (becomes a `mailto:`), a **URL** (linked as-is), or free text
 (shown, not linked). Left empty it renders "Contact your account team for access." as inert text
 — deliberately, because a broken `mailto:` on the only call to action is worse than no link.
+
+**Anything unset renders as a visible `NOT CONFIGURED` marker, never as filler.** This is the
+rule the legal and contact pages depend on: a site that invents a registered address, a company
+number or a governing law is publishing a fabricated record, which is worse than one that admits
+the field is empty. The build also lists every unset field on stderr, so an unfilled deploy is
+obvious rather than plausible.
+
+> **The legal page is a draft.** It carries a prominent banner saying so: not an executed
+> agreement, not legal advice, not reviewed by counsel, and explicitly subordinate to any signed
+> agreement. It is published for transparency — including a section stating plainly that the
+> audit log's hash chain is in tension with a right to erasure and that the fix is not yet
+> implemented. Have counsel review it before treating any of it as binding.
 
 Substitution is build-time, so changing either value is a rebuild rather than a restart. That is
 the trade taken when the page left the licensing service; for values that change roughly never it
@@ -150,6 +176,24 @@ real DOM text:
 Interactive elements keep working while animating: the library's canvas is `pointer-events: none`,
 so a button stays clickable mid-effect, its box never shifts, and the text underneath stays
 selectable and readable to a screen reader (the canvas is `aria-hidden`).
+
+### The arrival transition
+
+Every page opens behind a full-screen grid of random hex that **decrypts away**, so moving
+between pages reads as decrypting into the new one. A tiny synchronous script in `<head>` arms it
+before first paint; the deferred module runs the effect and uncovers.
+
+It is **arrival-only, on purpose.** An earlier version also intercepted link clicks to run an
+"encrypt" animation *before* navigating. That could not be made reliable — in browser testing the
+click was intermittently swallowed with no navigation request issued at all, leaving the visitor
+stuck on the page with no error and nothing in the console. A decorative transition is not worth
+a link that sometimes does nothing, so links are ordinary anchors the browser handles itself and
+no script sits between a click and the page it asks for.
+
+Three properties keep the remaining overlay from ever stranding anyone, each pinned by a test:
+it is `display:none` until a script turns it on (so no-JS never sees it), it is
+`pointer-events:none` (an `opacity:0` overlay still swallows clicks), and the head script removes
+it on a timer even if the module never executes.
 
 Effects do not replay when a screen is scrolled back into view; the headline settles as static
 readable text. Known and acceptable.

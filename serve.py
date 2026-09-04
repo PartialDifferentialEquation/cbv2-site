@@ -59,13 +59,17 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--host", default="127.0.0.1", help="default: loopback only")
     ap.add_argument("--dist", type=Path, default=build_mod.DEFAULT_OUT)
     ap.add_argument("--no-build", action="store_true", help="serve dist/ as-is instead of rebuilding")
-    ap.add_argument("--vendor-name", default=os.environ.get("CBSITE_VENDOR_NAME", "CBv2"))
-    ap.add_argument("--contact", default=os.environ.get("CBSITE_CONTACT", ""))
+    # Every operator field, read from the same environment variables build.py uses, so a
+    # preview shows exactly what a deploy would. Kept in lockstep by iterating build.FIELDS
+    # rather than restating the list — a new field added there must not silently vanish here.
+    for key, (env, _what, default) in build_mod.FIELDS.items():
+        ap.add_argument(f"--{key.lower().replace('_', '-')}",
+                        default=os.environ.get(env, default))
     args = ap.parse_args(argv)
 
     dist = args.dist.resolve()
     if not args.no_build:
-        build_mod.build(dist, vendor_name=args.vendor_name, contact=args.contact)
+        build_mod.build(dist, {k: getattr(args, k.lower()) or "" for k in build_mod.FIELDS})
         print(f"built  {dist}")
     elif not (dist / "index.html").is_file():
         raise SystemExit(f"serve: nothing built at {dist} — run without --no-build first.")
