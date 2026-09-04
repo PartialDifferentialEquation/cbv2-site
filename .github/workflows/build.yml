@@ -4,9 +4,15 @@ on:
   push:
     branches: [main, "claude/**"]
   pull_request:
+  # Lets you re-publish the current main without pushing a commit (e.g. after changing the
+  # CBSITE_CONTACT repository variable, which is a build-time input).
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  build:
+  test:
     strategy:
       # Match the engine and licensing repos: keep the Linux signal independent from Windows.
       # Windows matters here specifically because it is where the .js MIME mapping goes wrong.
@@ -40,3 +46,59 @@ jobs:
         with:
           name: site-${{ matrix.os }}
           path: dist/
+
+  # ── GitHub Pages ────────────────────────────────────────────────────────────────────
+  # Deploys only from main, and only after `test` is green on both OS legs — a red build must
+  # never reach the public site.
+  deploy:
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pages: write        # publish the artifact
+      id-token: write     # OIDC token deploy-pages exchanges; no long-lived secret involved
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    # Never cancel a publish half-way: an interrupted deployment can leave the live site on a
+    # partially-updated set of files. Queue instead.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Configure Pages
+        # `enablement: true` turns Pages on via the API if it is not already, so the first
+        # deploy does not need a manual visit to Settings -> Pages.
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Build the site
+        # Repository *variables*, not secrets — both values are printed on a public page, and
+        # storing a public address as a secret only makes it harder to audit what shipped.
+        # Unset CBSITE_CONTACT is safe by design: the call to action degrades to an inert
+        # prompt rather than a broken mailto:. The build warns on stderr when that happens.
+        env:
+          CBSITE_VENDOR_NAME: ${{ vars.CBSITE_VENDOR_NAME || 'CBv2' }}
+          CBSITE_CONTACT: ${{ vars.CBSITE_CONTACT }}
+        run: python build.py
+
+      - name: Upload the Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4

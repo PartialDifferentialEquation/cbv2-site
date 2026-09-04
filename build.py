@@ -34,6 +34,10 @@ ROOT = Path(__file__).resolve().parent
 SRC_DIR = ROOT / "src"
 DEFAULT_OUT = ROOT / "dist"
 
+# Everything a build writes into the output directory. `_prepare_out` clears only these, so a
+# `--out` pointed at anything else is an error rather than a silent wipe.
+OUTPUTS = frozenset({"index.html", "vendor", ".nojekyll"})
+
 # Every placeholder the template may contain. The build fails if one is missing from this map
 # (an unsubstituted `{{...}}` would otherwise ship to production as literal text).
 PLACEHOLDERS = ("VENDOR_NAME", "CONTACT_HREF", "CONTACT_LABEL", "YEAR")
@@ -91,10 +95,10 @@ def _prepare_out(out: Path) -> None:
     if not out.is_dir():
         raise SystemExit(f"build: --out exists and is not a directory: {out}")
     entries = {p.name for p in out.iterdir()}
-    if entries and not entries <= {"index.html", "vendor"}:
+    if entries and not entries <= OUTPUTS:
         raise SystemExit(
             f"build: refusing to clear {out} — it holds files this build did not create "
-            f"({', '.join(sorted(entries - {'index.html', 'vendor'}))}). "
+            f"({', '.join(sorted(entries - OUTPUTS))}). "
             "Point --out at an empty or previously-built directory."
         )
     for p in out.iterdir():
@@ -110,6 +114,10 @@ def build(out: Path, *, vendor_name: str, contact: str, src: Path = SRC_DIR) -> 
     # The vendored tree ships with its licence and notice files; copy it whole so attribution
     # travels with the code we redistribute rather than being trimmed to "just the .js".
     shutil.copytree(src / "vendor", out / "vendor")
+    # Belt and braces for GitHub Pages. The Actions-based deployment never runs Jekyll, so this
+    # changes nothing today — it matters only if the Pages source is ever switched to
+    # "deploy from a branch", where Jekyll would silently drop any path starting with `_`.
+    (out / ".nojekyll").touch()
     return out
 
 

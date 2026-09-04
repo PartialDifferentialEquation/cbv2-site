@@ -12,7 +12,7 @@ python serve.py                                                      # preview o
 ```
 
 `dist/` is plain files — point nginx, Caddy, S3 or Pages at it. No runtime, no build toolchain,
-no npm.
+no npm. **Pushes to `main` publish to GitHub Pages automatically** (see below).
 
 ## What the page is
 
@@ -24,6 +24,49 @@ meaning rather than novelty; the hero of an encryption product runs `decrypt`.
 Positioning is deliberate and unchanged from the version that shipped in the licensing repo: the
 hero sells, and the honest limits of client-side protection stay **mid-page on their own screen**
 — present, not buried, and not in the first viewport.
+
+## Deployment — GitHub Pages
+
+`.github/workflows/build.yml` publishes `main` to Pages on every push, and only after the test
+matrix is green on both OS legs — a red build never reaches the live site. `workflow_dispatch`
+re-publishes the current `main` without a commit, which is how you apply a changed
+`CBSITE_CONTACT`.
+
+**Two things to set once, in the repo's settings:**
+
+| Where | Set |
+|---|---|
+| Settings → Secrets and variables → Actions → **Variables** | `CBSITE_CONTACT` (e.g. `sales@yourco.example`), and optionally `CBSITE_VENDOR_NAME` |
+| Settings → **Pages** | Source = **GitHub Actions**. The workflow's `configure-pages` step sets this itself on first run, so this is usually just where you go to confirm it and read the URL. |
+
+They are **variables, not secrets** — both are printed on a public page, and hiding a public
+address in a secret only makes it harder to audit what actually shipped. If `CBSITE_CONTACT` is
+unset the build still succeeds and the call to action degrades to an inert prompt (it warns on
+stderr), which is the deliberate behaviour: no link beats a broken `mailto:`.
+
+**Know before you enable it:** this repository is private, and Pages behaves differently from
+the code.
+
+- Pages on a **private** repo needs a paid plan (Pro / Team / Enterprise). On Free it is
+  public-repos-only and the deploy step will fail.
+- The **published site is public** even though the source stays private. Restricting who can
+  view a Pages site is an Enterprise Cloud feature. For a marketing page that is the point — but
+  it does mean `dist/` is world-readable, so nothing that is not meant for the public should ever
+  reach the build output.
+
+### Paths must stay relative
+
+The project site is served from `https://<owner>.github.io/cbv2-site/`, a **subpath**. A
+root-absolute `/vendor/...` resolves to the domain root there and 404s — and the page still
+renders as static type, so the breakage looks like a design choice rather than a fault. Every
+asset path is therefore relative, and two tests
+(`test_module_imports_are_relative_and_resolve`, `test_no_root_absolute_asset_paths`) fail the
+build if one goes absolute again. The same build works unchanged at a subpath, at a custom
+domain's root, and under `serve.py`.
+
+For a **custom domain**, set it in Settings → Pages and commit a `CNAME` file into `src/` —
+then add it to `build.py`'s copy step and to `OUTPUTS`, so it survives the build rather than
+being cleared on the next deploy.
 
 ## Configuration
 
@@ -90,10 +133,11 @@ The suite pins the things that fail silently rather than loudly: placeholder sub
 contact-link rules, the honesty guard (no "unbreakable" / "100% secure" / "uncrackable"; the
 ceiling must be stated), that the vendored licences survive into `dist/`, that every effect name
 used exists in the vendored catalogue, that the page's module import path matches what the build
-emits, that `.js` is served as JavaScript, and that the page still reads with no JS and under
-reduced motion.
+emits and is relative (not root-absolute, which breaks a Pages subpath), that `.js` is served as
+JavaScript, and that the page still reads with no JS and under reduced motion.
 
-CI runs it on ubuntu + windows and uploads `dist/` as an artifact.
+CI runs it on ubuntu + windows, uploads `dist/` as an artifact, and — on `main` only, after both
+legs pass — deploys to Pages.
 
 ## Related repositories
 

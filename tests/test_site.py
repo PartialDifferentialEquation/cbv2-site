@@ -155,13 +155,38 @@ def test_effect_names_are_real(site):
     assert "effectNames" in html and "falling back" in html
 
 
-def test_page_imports_the_vendored_module_by_a_path_the_build_produces(site):
-    """The import specifier and the output layout have to agree; a mismatch is a blank page."""
+def test_module_imports_are_relative_and_resolve(site):
+    """The import specifier and the output layout have to agree; a mismatch is a blank page.
+
+    They must also be **relative**. GitHub Pages serves a project site under `/<repo>/`, so a
+    root-absolute `/vendor/...` resolves to the domain root and 404s — and the failure is
+    invisible in review, because the page still renders as static type with no effects. Relative
+    specifiers resolve against the document, so one build works at a subpath, at a custom
+    domain's root, and under `serve.py` alike.
+    """
     out, html = site()
-    specifiers = re.findall(r"""from ['"](/[^'"]+)['"]""", html)
-    assert specifiers, "no absolute module import found in the page"
+    specifiers = re.findall(r"""\bfrom ['"]([^'"]+)['"]""", html)
+    assert specifiers, "no module import found in the page"
     for spec in specifiers:
-        assert (out / spec.lstrip("/")).is_file(), f"page imports {spec}, which the build does not emit"
+        assert not spec.startswith("/"), (
+            f"module import {spec!r} is root-absolute and will 404 on a Pages project site; "
+            "use './vendor/...' instead")
+        assert spec.startswith("."), f"unexpected bare module specifier {spec!r} (no bundler here)"
+        assert (out / spec.lstrip("./")).is_file(), f"page imports {spec}, which the build does not emit"
+
+
+def test_no_root_absolute_asset_paths(site):
+    """Same trap, wider net: any `src=\"/...\"` or `href=\"/...\"` breaks a subpath deployment."""
+    _, html = site()
+    absolute = re.findall(r'(?:src|href)="(/[^/"][^"]*)"', html)
+    assert not absolute, f"root-absolute asset path(s) break a Pages project site: {absolute}"
+
+
+def test_build_emits_nojekyll(site):
+    """Only load-bearing if the Pages source is ever switched to 'deploy from a branch', where
+    Jekyll drops paths starting with `_`. Cheap to keep, expensive to debug when missing."""
+    out, _ = site()
+    assert (out / ".nojekyll").is_file()
 
 
 # ── serving ─────────────────────────────────────────────────────────────────────────
