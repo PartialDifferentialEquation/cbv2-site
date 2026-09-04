@@ -360,6 +360,88 @@ def test_licences_survive_the_build(site):
     assert len(list((v / "LICENSES").glob("*.txt"))) >= 2
 
 
+# ── borrowed CSS: it has to work, and it has to stay credited ───────────────────────
+UIVERSE = ROOT / "src" / "vendor" / "uiverse"
+UIVERSE_ELEMENTS = {
+    "adamgiebl_curvy-earwig-79": "adamgiebl",
+    "kennyotsu_short-warthog-33": "kennyotsu",
+    "Cornerstone-04_bitter-impala-54": "Cornerstone-04",
+}
+
+
+def test_uiverse_originals_and_licence_survive_the_build(site):
+    """Same obligation as tte.js: `dist/` is what gets redistributed, so the licence and the
+    unmodified sources backing the attribution have to be in it."""
+    out, _ = site()
+    v = out / "vendor" / "uiverse"
+    assert (v / "LICENSE").is_file(), "the Uiverse licence was dropped from the build output"
+    assert "MIT" in (v / "LICENSE").read_text(encoding="utf-8")
+    for name in UIVERSE_ELEMENTS:
+        assert (v / f"{name}.html").is_file(), f"{name} original missing from dist"
+
+
+def test_every_borrowed_element_is_credited_by_name(site):
+    """Uiverse asks that the individual creator be credited, not just the platform. A notices
+    file that says "some CSS from Uiverse" would satisfy the licence and not the request."""
+    notices = (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+    for name, creator in UIVERSE_ELEMENTS.items():
+        assert creator in notices, f"{creator} is not credited in THIRD_PARTY_NOTICES.md"
+        assert name in notices, f"{name} is not named in THIRD_PARTY_NOTICES.md"
+    assert "Uiverse.io" in notices and "MIT" in notices
+
+
+def test_the_originals_are_not_wired_into_any_page(site):
+    """They are provenance, not assets. A page that actually loaded one would be shipping a
+    stray light-themed widget, and would also make the "adapted, not copied" claim false."""
+    _, pages = site()
+    # A mention in a CSS comment is the attribution doing its job; a src/href is a load.
+    ref = re.compile(r'(?:src|href)\s*=\s*"[^"]*vendor/uiverse')
+    for slug, page in pages.items():
+        assert not ref.search(page), f"{slug} loads one of the vendored originals"
+
+
+@pytest.mark.parametrize("selector,prop", [
+    (".grid-bg", "mask-image"),        # masked, or it competes with body copy all the way down
+    (".facts > div", "radial-gradient"),
+    (".draw::before", "translateX"),
+    (".draw::after", "translateX"),
+])
+def test_adapted_css_is_present(site, selector, prop):
+    _, pages = site()
+    css = pages["index"].split("<style>")[1].split("</style>")[0]
+    assert selector in css, f"{selector} is missing from the stylesheet"
+    assert prop in css, f"{selector} lost its {prop}"
+
+
+def test_adapted_css_dropped_the_original_palette(site):
+    """The originals are light-themed or brightly coloured. Pasting their colours in would fight
+    every token the site defines, so the adaptation is only honest if they are actually gone."""
+    _, pages = site()
+    css = pages["index"].split("<style>")[1].split("</style>")[0].lower()
+    for stray in ("#191a1a", "#313131", "#262626", "rgba(114, 114, 114"):
+        assert stray not in css, f"{stray} came straight from a Uiverse original"
+
+
+def test_the_border_draw_respects_reduced_motion(site):
+    """It animates on hover, so it needs the same reduced-motion answer as the page transition:
+    show the outline, skip the travel."""
+    _, pages = site()
+    css = pages["index"].split("<style>")[1].split("</style>")[0]
+    reduced = css.split("prefers-reduced-motion")
+    assert any(".draw" in chunk.split("}")[0] or ".draw" in chunk[:600] for chunk in reduced[1:]), \
+        "the border-draw hover has no reduced-motion branch"
+
+
+def test_hover_decoration_is_not_load_bearing(site):
+    """Everything borrowed here is decoration over content that already stands on its own. If a
+    tier row only made sense on hover, a touch device would lose the comparison entirely."""
+    _, pages = site()
+    body = body_of(pages["index"])
+    for tier in ("open", "local", "split", "enclave"):
+        assert f"<b>{tier}</b>" in body, f"the {tier} tier is not in the static markup"
+    assert body.count('class="draw"') == 3, "the numbers block lost its cells"
+
+
 def _registered_effects():
     return set(re.findall(
         r"effect\('([a-z]+)'", (VENDOR / "src" / "builtin-effects.js").read_text(encoding="utf-8")))

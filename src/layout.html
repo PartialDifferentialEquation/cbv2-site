@@ -48,6 +48,70 @@
   a:hover { text-decoration:underline; }
   code { font-family:var(--mono); font-size:.88em; color:var(--accent); }
 
+  /* ── borrowed texture + hover, adapted ───────────────────────────
+     Three techniques from the Uiverse galaxy (https://github.com/uiverse-io/galaxy, MIT,
+     (c) 2023 Uiverse.io). The unmodified originals and the licence are in
+     src/vendor/uiverse/, which also names each creator; nothing here loads them at runtime.
+
+     All three were recoloured onto the tokens above and stripped of their radii and shadows.
+     The originals are light-themed or brightly coloured -- pasted as-is they would have read
+     as decoration bolted onto a different site, which is the opposite of the point. */
+
+  /* Graph-paper ground, after adamgiebl's `curly-earwig-79` pattern. Fixed rather than
+     scrolling, so it behaves like paper the page sits on instead of a texture sliding past.
+     Masked to fade out down the viewport: an unbroken grid behind body copy is noise, and it
+     competes with the type, which is what the design is actually built around. */
+  .grid-bg { position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background-image:
+      linear-gradient(0deg,  transparent 24%, var(--rule) 25%, var(--rule) 26%, transparent 27%,
+                             transparent 74%, var(--rule) 75%, var(--rule) 76%, transparent 77%,
+                             transparent),
+      linear-gradient(90deg, transparent 24%, var(--rule) 25%, var(--rule) 26%, transparent 27%,
+                             transparent 74%, var(--rule) 75%, var(--rule) 76%, transparent 77%,
+                             transparent);
+    background-size:72px 72px;
+    /* Tuned against the secondary pages, not the home page. There the content column is 74ch
+       on a 1440px viewport, so the grid is exposed across wide margins and sits directly
+       behind body copy -- at the strength that looked right behind the hero's display type it
+       made paragraphs measurably busier to read. Texture loses to legibility. */
+    opacity:.3;
+    -webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.3) 48%,transparent 88%);
+            mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.3) 48%,transparent 88%); }
+
+  /* Dot field, after kennyotsu's `short-warthog-33`. Used only inside the numbers block, to
+     separate it from the flat ground rather than to decorate the whole page. It goes on the
+     cells, not on `.facts` itself: that container is painted `--rule` and shows through only
+     as the 1px gaps between cells, so a pattern there would be invisible. */
+  .facts > div { background-color:var(--bg);
+    background-image:radial-gradient(rgba(242,244,248,.09) 1px, transparent 0);
+    background-size:22px 22px; background-position:-3px -3px; }
+
+  /* Border-draw hover, after Cornerstone-04's `bitter-impala-54`. Two pseudo-elements slide
+     in from opposite ends and then grow, so the outline traces itself around the box in one
+     continuous stroke: `::after` draws the top then the right, `::before` the bottom then the
+     left. Reduced to 1px in the accent colour, and the original's drop shadow dropped.
+     The element must not clip its own outline, so no overflow:hidden here -- the original
+     needed it to hide the offscreen start position, but at 1px with transform:translateX the
+     pseudo-elements stay inside the box's own bounds. */
+  .draw { position:relative; }
+  .draw::before, .draw::after { content:""; position:absolute; left:0; width:100%; height:1px;
+    box-sizing:border-box; pointer-events:none; }
+  .draw::before { bottom:0; border-bottom:1px solid transparent; border-left:1px solid transparent;
+    transform:translateX(100%); }
+  .draw::after  { top:0;    border-top:1px solid transparent;   border-right:1px solid transparent;
+    transform:translateX(-100%); }
+  .draw:hover::before, .draw:focus-within::before { border-color:var(--accent); height:100%;
+    transform:translateX(0); transition:transform .3s linear, height .3s linear .3s; }
+  .draw:hover::after,  .draw:focus-within::after  { border-color:var(--accent); height:100%;
+    transform:translateX(0); transition:transform .3s linear, height .3s linear .5s; }
+  /* Reduced motion gets the same signal without the travel: the outline simply appears. */
+  @media (prefers-reduced-motion: reduce) {
+    .draw::before, .draw::after { transform:none; height:100%; border-color:transparent; }
+    .draw:hover::before, .draw:hover::after,
+    .draw:focus-within::before, .draw:focus-within::after { transition:none;
+      border-color:var(--accent); }
+  }
+
   /* ── screens: one statement each ─────────────────────────────── */
   .screen { min-height:100svh; display:flex; align-items:center; padding:14vh 0;
     border-bottom:1px solid var(--rule); position:relative; }
@@ -90,7 +154,8 @@
   .facts { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
     gap:1px; background:var(--rule); border:1px solid var(--rule);
     margin-top:clamp(30px,4vw,56px); }
-  .facts > div { background:var(--bg); padding:clamp(16px,2vw,26px); }
+  /* background lives with the dot field above; a `background:` shorthand here would reset it */
+  .facts > div { padding:clamp(16px,2vw,26px); }
   .facts .k { font-family:var(--mono); font-size:clamp(24px,3vw,40px); font-weight:700;
     color:var(--accent); line-height:1; letter-spacing:-.04em; }
   .facts .v { color:var(--fg-soft); font-size:13px; margin-top:10px; }
@@ -196,6 +261,8 @@
 </style>
 </head>
 <body>
+
+<div class="grid-bg" aria-hidden="true"></div>
 
 <div id="xfer" aria-hidden="true"><pre id="xfer-grid"></pre></div>
 
