@@ -44,22 +44,18 @@ address in a secret only makes it harder to audit what actually shipped. If `CBS
 unset the build still succeeds and the call to action degrades to an inert prompt (it warns on
 stderr), which is the deliberate behaviour: no link beats a broken `mailto:`.
 
-**Know before you enable it:** this repository is private, and Pages behaves differently from
-the code.
+**Two things worth knowing:**
 
-- Pages on a **private** repo needs a paid plan (Pro / Team / Enterprise). On Free it is
-  public-repos-only and the deploy step fails.
-- **Pages has to be enabled by hand, once.** The workflow does not turn it on for you: creating
-  a Pages site from Actions needs `POST /repos/{owner}/{repo}/pages`, and `GITHUB_TOKEN` was
-  refused that call on this repository (`Resource not accessible by integration`) despite holding
-  `pages: write` — which is what the API returns when the plan does not cover Pages for a private
-  repo. So the first run of `deploy` will fail until Settings → Pages → Source is set to **GitHub
-  Actions**; if that setting is not offered there, the plan is the blocker and the choice is to
-  upgrade or make the repository public.
-- The **published site is public** even though the source stays private. Restricting who can
-  view a Pages site is an Enterprise Cloud feature. For a marketing page that is the point — but
-  it does mean `dist/` is world-readable, so nothing that is not meant for the public should ever
-  reach the build output.
+- **Pages must be enabled by hand, once.** The workflow does not turn it on: creating a Pages
+  site from Actions needs `POST /repos/{owner}/{repo}/pages`, and `GITHUB_TOKEN` was refused that
+  call here (`Resource not accessible by integration`) despite holding `pages: write`. So the
+  `deploy` job fails until **Settings → Pages → Source** is set to **GitHub Actions**. After
+  that, every push to `main` publishes.
+- **Pages on a private repo needs a paid plan** (Pro / Team / Enterprise); on Free it is
+  public-repos-only. Either way the **published site is public** — restricting who can view a
+  Pages site is an Enterprise Cloud feature. That is the point for a marketing page, but it means
+  `dist/` is world-readable, so nothing that is not meant for the public should ever reach the
+  build output. Today `dist/` is the page, the vendored MIT library, and its licence files.
 
 ### Paths must stay relative
 
@@ -148,8 +144,7 @@ legs pass — deploys to Pages.
 
 ## Related repositories
 
-| Repo | What it is |
-|---|---|
-| [`Cbv2`](https://github.com/PartialDifferentialEquation/Cbv2) | The engine — packaging, licensing, execution control |
-| [`cbv2-licensing`](https://github.com/PartialDifferentialEquation/cbv2-licensing) | Vendor-side licensing & billing API |
-| [`cbv2-docs`](https://github.com/PartialDifferentialEquation/cbv2-docs) | Documentation (MkDocs) |
+Deliberately not linked. The engine, the licensing/billing API and the documentation live in
+separate **private** repositories, and this one is public so that GitHub Pages can serve it —
+so listing their URLs here would publish the names and addresses of private repos to no one's
+benefit. Anyone who needs them has access to them.
