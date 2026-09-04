@@ -37,7 +37,7 @@ re-publishes the current `main` without a commit, which is how you apply a chang
 | Where | Set |
 |---|---|
 | Settings → Secrets and variables → Actions → **Variables** | `CBSITE_CONTACT` (e.g. `sales@yourco.example`), and optionally `CBSITE_VENDOR_NAME` |
-| Settings → **Pages** | Source = **GitHub Actions**. The workflow's `configure-pages` step sets this itself on first run, so this is usually just where you go to confirm it and read the URL. |
+| Settings → **Pages** | Source = **GitHub Actions**. This one is **required before the first deploy** — see below. |
 
 They are **variables, not secrets** — both are printed on a public page, and hiding a public
 address in a secret only makes it harder to audit what actually shipped. If `CBSITE_CONTACT` is
@@ -48,7 +48,14 @@ stderr), which is the deliberate behaviour: no link beats a broken `mailto:`.
 the code.
 
 - Pages on a **private** repo needs a paid plan (Pro / Team / Enterprise). On Free it is
-  public-repos-only and the deploy step will fail.
+  public-repos-only and the deploy step fails.
+- **Pages has to be enabled by hand, once.** The workflow does not turn it on for you: creating
+  a Pages site from Actions needs `POST /repos/{owner}/{repo}/pages`, and `GITHUB_TOKEN` was
+  refused that call on this repository (`Resource not accessible by integration`) despite holding
+  `pages: write` — which is what the API returns when the plan does not cover Pages for a private
+  repo. So the first run of `deploy` will fail until Settings → Pages → Source is set to **GitHub
+  Actions**; if that setting is not offered there, the plan is the blocker and the choice is to
+  upgrade or make the repository public.
 - The **published site is public** even though the source stays private. Restricting who can
   view a Pages site is an Enterprise Cloud feature. For a marketing page that is the point — but
   it does mean `dist/` is world-readable, so nothing that is not meant for the public should ever

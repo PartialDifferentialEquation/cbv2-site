@@ -78,11 +78,14 @@ jobs:
           python-version: "3.11"
 
       - name: Configure Pages
-        # `enablement: true` turns Pages on via the API if it is not already, so the first
-        # deploy does not need a manual visit to Settings -> Pages.
+        # NOT `enablement: true`. Creating the Pages site from here needs the API call
+        # POST /repos/{owner}/{repo}/pages, and GITHUB_TOKEN was refused it on this repository
+        # ("Resource not accessible by integration"), most likely because Pages on a *private*
+        # repo requires a paid plan. Rather than fail every run on a call that cannot succeed,
+        # this step now just reads the existing configuration -- so Pages must be switched on
+        # once by hand: Settings -> Pages -> Source: GitHub Actions. If that page offers no such
+        # option, the plan does not include Pages for private repositories.
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Build the site
         # Repository *variables*, not secrets — both values are printed on a public page, and
