@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{VENDOR_NAME}} — control your software after you ship it</title>
+<meta name="description" content="Package, license, meter and revoke proprietary software and AI models running on infrastructure you don't own. Per-customer attribution, per-run authorization, instant revocation, and a crown jewel that never leaves your server.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2307080c'/%3E%3Ctext x='16' y='22' font-size='15' font-family='monospace' font-weight='bold' fill='%235ad2f5' text-anchor='middle'%3ECB%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+  /* A deliberately single-look design: near-black ground, one statement per screen,
+     tte.js carrying the motion. Colours are painted explicitly rather than inherited. */
+  :root {
+    --bg:#07080c; --bg-2:#0b0d13;
+    --fg:#f2f4f8; --fg-soft:#98a0b4; --fg-faint:#5d6577;
+    --accent:#5ad2f5; --accent-2:#a78bfa; --warn:#ffb454; --ok:#4fd39b;
+    --rule:rgba(242,244,248,.13);
+    --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { margin:0; background:var(--bg); color:var(--fg); font-family:var(--sans);
+    font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased; overflow-x:hidden; }
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  code { font-family:var(--mono); font-size:.88em; color:var(--accent); }
+
+  /* ── screens: one statement each ─────────────────────────────── */
+  .screen { min-height:100svh; display:flex; align-items:center; padding:14vh 0;
+    border-bottom:1px solid var(--rule); position:relative; }
+  .screen:last-of-type { border-bottom:0; }
+  .inner { width:100%; max-width:1500px; margin:0 auto; padding:0 clamp(20px,5vw,80px); }
+
+  /* the animated statement — tte.js measures this element and overlays a canvas on it */
+  .line { font-family:var(--mono); font-weight:700; letter-spacing:-.035em; line-height:1.02;
+    font-size:clamp(26px,7.2vw,116px); margin:0; white-space:pre; color:var(--fg);
+    overflow-x:auto; overflow-y:hidden; }
+  .line.sm { font-size:clamp(22px,4.6vw,68px); }
+  .accent { color:var(--accent); }
+
+  .cap { font-family:var(--mono); font-size:clamp(10px,1.05vw,12.5px); letter-spacing:.24em;
+    text-transform:uppercase; color:var(--fg-faint); margin:0 0 clamp(18px,3vw,40px);
+    display:flex; align-items:center; gap:14px; }
+  .cap::after { content:""; flex:1; height:1px; background:var(--rule); }
+  .sub { color:var(--fg-soft); font-size:clamp(15px,1.35vw,19px); max-width:60ch;
+    margin:clamp(22px,3.5vw,44px) 0 0; }
+  .sub strong { color:var(--fg); font-weight:500; }
+
+  .btn { display:inline-flex; align-items:center; gap:10px; font-family:var(--mono);
+    font-size:13px; font-weight:600; letter-spacing:.14em; text-transform:uppercase;
+    padding:16px 28px; border:1px solid var(--fg); color:var(--fg); background:transparent;
+    transition:background .18s, color .18s; }
+  .btn:hover { background:var(--fg); color:var(--bg); text-decoration:none; }
+  .btn.on { background:var(--accent); border-color:var(--accent); color:var(--bg); }
+  .btn.on:hover { filter:brightness(1.1); background:var(--accent); color:var(--bg); }
+  .row { display:flex; flex-wrap:wrap; gap:14px; margin-top:clamp(26px,4vw,48px); }
+
+  /* nav — minimal, just a mark and one action */
+  header { position:fixed; top:0; left:0; right:0; z-index:20; display:flex; align-items:center;
+    gap:16px; padding:18px clamp(20px,5vw,80px); font-family:var(--mono); font-size:12.5px;
+    letter-spacing:.16em; text-transform:uppercase; mix-blend-mode:difference; }
+  header .mark { font-weight:700; }
+  header .spacer { flex:1; }
+  header a { color:var(--fg); }
+
+  /* small supporting grids, kept sparse */
+  .facts { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+    gap:1px; background:var(--rule); border:1px solid var(--rule);
+    margin-top:clamp(30px,4vw,56px); }
+  .facts > div { background:var(--bg); padding:clamp(16px,2vw,26px); }
+  .facts .k { font-family:var(--mono); font-size:clamp(24px,3vw,40px); font-weight:700;
+    color:var(--accent); line-height:1; letter-spacing:-.04em; }
+  .facts .v { color:var(--fg-soft); font-size:13px; margin-top:10px; }
+
+  .tiers { margin-top:clamp(28px,4vw,52px); border-top:1px solid var(--rule); }
+  .tiers div { display:grid; grid-template-columns:150px 1fr; gap:18px; padding:16px 0;
+    border-bottom:1px solid var(--rule); align-items:baseline; }
+  @media (max-width:680px) { .tiers div { grid-template-columns:1fr; gap:6px; } }
+  .tiers b { font-family:var(--mono); font-size:15px; letter-spacing:.06em; text-transform:uppercase;
+    font-weight:700; }
+  .tiers span { color:var(--fg-soft); font-size:15px; }
+  .t-open b { color:var(--warn); } .t-local b { color:var(--warn); }
+  .t-split b { color:var(--ok); } .t-enclave b { color:var(--ok); }
+
+  .langs { display:flex; flex-wrap:wrap; gap:10px 12px; margin-top:clamp(26px,3.5vw,46px);
+    font-family:var(--mono); font-size:clamp(12px,1.15vw,15px); }
+  .langs span { border:1px solid var(--rule); padding:9px 15px; color:var(--fg-soft);
+    letter-spacing:.06em; }
+
+  .limits { margin-top:clamp(26px,3.5vw,46px); display:grid; gap:20px;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); }
+  .limits div { border-left:2px solid var(--warn); padding-left:18px; }
+  .limits h3 { font-family:var(--mono); font-size:14px; text-transform:uppercase;
+    letter-spacing:.06em; margin:0 0 8px; color:var(--warn); }
+  .limits p { margin:0; color:var(--fg-soft); font-size:14.5px; }
+
+  footer { padding:40px clamp(20px,5vw,80px); font-family:var(--mono); font-size:11.5px;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--fg-faint);
+    display:flex; flex-wrap:wrap; gap:14px; justify-content:space-between;
+    border-top:1px solid var(--rule); }
+
+  /* tte.js overlays an aria-hidden canvas; the source text stays in the DOM, so with no
+     JS (or with reduced motion) the page is simply read as static type. */
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior:auto; } }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="mark">{{VENDOR_NAME}}</span>
+  <span class="spacer"></span>
+  <a href="#claims">Our claims</a>
+  <a href="{{CONTACT_HREF}}">Request access →</a>
+</header>
+
+<section class="screen" id="hero">
+  <div class="inner">
+    <p class="cap">Secure distribution &amp; execution control</p>
+    <pre class="line" data-effect="decrypt" data-colors="#5ad2f5,#a78bfa,#f2f4f8">YOUR CODE RUNS
+ON THEIR MACHINES.</pre>
+    <p class="sub">{{VENDOR_NAME}} packages, licenses, meters and revokes proprietary software and
+      AI models running on infrastructure you don't own — with <strong>per-customer
+      attribution</strong>, <strong>per-run authorization</strong>, and a <strong>crown jewel that
+      never leaves your server</strong>.</p>
+    <div class="row">
+      <a class="btn on" href="{{CONTACT_HREF}}">Request access</a>
+      <a class="btn" href="#problem">See why</a>
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="problem">
+  <div class="inner">
+    <p class="cap">The problem</p>
+    <pre class="line" data-effect="scattered">YOU CAN'T SEE
+THE BOX.</pre>
+    <p class="sub">Their hardware, their admins, their backups. Once a build lands, you cannot say
+      who copied it, who leaked it, or how to stop it running.</p>
+    <div class="facts">
+      <div><div class="k">0</div><div class="v">Visibility into the machine your build runs on</div></div>
+      <div><div class="k">1</div><div class="v">Identical binary shipped to every customer</div></div>
+      <div><div class="k">∞</div><div class="v">How long it keeps running after the contract ends</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="attribution">
+  <div class="inner">
+    <p class="cap">Control 01 — Attribution</p>
+    <pre class="line" data-effect="binarypath">EVERY BUILD IS
+WATERMARKED.</pre>
+    <p class="sub">Source, native binary, JS, JVM or model weights — each customer's copy carries a
+      per-customer mark. A leak found anywhere resolves back to exactly one customer.</p>
+  </div>
+</section>
+
+<section class="screen" id="authorization">
+  <div class="inner">
+    <p class="cap">Control 02 — Authorization</p>
+    <pre class="line" data-effect="errorcorrect">NO LICENCE,
+NO RUN.</pre>
+    <p class="sub">Content keys release just-in-time, only after an entitlement check — enforced at
+      download and at every single key release.</p>
+  </div>
+</section>
+
+<section class="screen" id="revocation">
+  <div class="inner">
+    <p class="cap">Control 03 — Revocation</p>
+    <pre class="line" data-effect="burn">REVOKE.
+NEXT RUN DENIED.</pre>
+    <p class="sub">A kill switch at the stable handle — customer, deployment or licence. It cannot
+      be outrun by a rotating identifier.</p>
+  </div>
+</section>
+
+<section class="screen" id="split">
+  <div class="inner">
+    <p class="cap">Control 04 — Split</p>
+    <pre class="line" data-effect="laseretch">THE CROWN JEWEL
+NEVER SHIPS.</pre>
+    <p class="sub">Your secret step stays server-side and is called at runtime. Even a fully
+      reverse-engineered client is missing the actual computation — it only knows how to ask.</p>
+  </div>
+</section>
+
+<section class="screen" id="tiers">
+  <div class="inner">
+    <p class="cap">Protection tiers</p>
+    <pre class="line sm" data-effect="wipe">CHOOSE YOUR CEILING.</pre>
+    <div class="tiers">
+      <div class="t-open"><b>open</b><span>Signed and watermarked. Tamper-evident provenance — no confidentiality.</span></div>
+      <div class="t-local"><b>local</b><span>Encrypted, decrypted in memory, gated per run. Raises extraction cost; a determined host owner can still recover it.</span></div>
+      <div class="t-split"><b>split</b><span>The valuable computation never ships. Real secrecy of the secret step.</span></div>
+      <div class="t-enclave"><b>enclave</b><span>The jewel runs server-side in a hardware TEE, attested before any key release.</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="languages">
+  <div class="inner">
+    <p class="cap">Reach</p>
+    <pre class="line sm" data-effect="print">ANY LANGUAGE.
+ONE PIPELINE.</pre>
+    <div class="langs">
+      <span>Python</span><span>Rust</span><span>Go</span><span>JavaScript</span><span>TypeScript</span>
+      <span>JVM</span><span>.NET</span><span>Native PE / ELF / Mach-O</span><span>ONNX · safetensors</span>
+    </div>
+    <p class="sub"><strong>cbget</strong> resolves, verifies the pinned signature, entitlement-gates,
+      then runs. Ship through npm, Homebrew or winget — the registry holds a launcher only, never
+      your protected bytes.</p>
+  </div>
+</section>
+
+<section class="screen" id="model">
+  <div class="inner">
+    <p class="cap">Deployment</p>
+    <pre class="line" data-effect="highlight">KEYS STAY
+WITH YOU.</pre>
+    <p class="sub">The control plane runs inside your customer's infrastructure — their keys, their
+      entitlements, their crown-jewel calls. The vendor plane only licenses deployments and meters
+      usage; the heartbeat carries <strong>usage signals only</strong>, never keys, secrets or
+      plaintext.</p>
+  </div>
+</section>
+
+<section class="screen" id="claims">
+  <div class="inner">
+    <p class="cap">Our claims</p>
+    <pre class="line" data-effect="errorcorrect" data-colors="#ffb454,#f2f4f8">NO SECURITY
+THEATER.</pre>
+    <p class="sub">Most vendors here will tell you their protection is absolute. It never is. Here
+      is exactly where our limits are, so you can decide with your eyes open.</p>
+    <div class="limits">
+      <div><h3>Client-side isn't secrecy</h3>
+        <p>Code running on a machine someone else owns can, given enough effort, be
+          reverse-engineered. <code>open</code> and <code>local</code> raise extraction cost — they
+          don't make it unachievable, and we won't pretend otherwise.</p></div>
+      <div><h3>Real secrecy lives server-side</h3>
+        <p>If a computation must stay secret, it belongs in <code>split</code> or
+          <code>enclave</code>. That's the honest boundary, and the one we build toward.</p></div>
+      <div><h3>Offline weakens revocation</h3>
+        <p>Air-gapped deployments run on time-boxed leases, so revocation lands at lease expiry or
+          reconnect rather than instantly. You choose the trade; we document it.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="cta">
+  <div class="inner">
+    <p class="cap">Get started</p>
+    <pre class="line" data-effect="matrix" data-colors="#4fd39b,#5ad2f5,#f2f4f8">REQUEST ACCESS.</pre>
+    <p class="sub">Attribution, authorization, revocation and split — on infrastructure you don't
+      control, with a vendor that tells you where the line is.</p>
+    <div class="row"><a class="btn on" href="{{CONTACT_HREF}}">Request access</a></div>
+  </div>
+</section>
+
+<footer>
+  <span>© {{YEAR}} {{VENDOR_NAME}} — secure distribution &amp; execution control</span>
+  <span>{{CONTACT_LABEL}}</span>
+</footer>
+
+<script type="module">
+  import { createTextEffect, effectNames } from '/vendor/tte/src/index.js'
+
+  // `<html data-tte>` exposes how far the bootstrap got: module -> bootstrapping -> observing
+  // -> running. Kept deliberately: a Canvas overlay has no other observable state, so without
+  // it "the effect silently never started" and "the effect finished" look identical to a
+  // browser test. Nothing reads it at runtime; it is a diagnostic seam, not behaviour.
+  const mark = (v) => { document.documentElement.dataset.tte = v }
+  mark('module')
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const lines = Array.from(document.querySelectorAll('.line[data-effect]'))
+
+  // Reduced motion: leave every statement as plain static type. The source text is already in
+  // the DOM, so this is simply "do nothing" — no fallback rendering needed.
+  if (!reduce && lines.length && 'IntersectionObserver' in window) {
+    mark('bootstrapping')
+    const known = new Set(effectNames())
+    const controllers = new Map()
+
+    const build = (el) => {
+      let name = (el.dataset.effect || '').trim()
+      if (!known.has(name)) {
+        // A misspelt effect throws inside the library; fall back rather than lose the headline.
+        console.warn(`[tte] unknown effect "${name}" — falling back to laseretch`)
+        name = 'laseretch'
+      }
+      const colors = (el.dataset.colors || '#5ad2f5,#f2f4f8').split(',').map((c) => c.trim())
+      return createTextEffect(el, { effect: name, colors, duration: 2200, seed: 7 })
+    }
+
+    const enter = (el) => {
+      // Already animating for this visit — do NOT restart. The immediate kick below and the
+      // observer's initial callback both land on the in-view lines, and restarting on the
+      // second one relaunches the animation, leaving the headline stuck mid-effect. Leaving
+      // view destroys the controller, so a genuine re-entry always rebuilds from scratch.
+      if (controllers.has(el)) { return }
+      try {
+        const fx = build(el)
+        controllers.set(el, fx)
+        void fx.restart()            // constructing a TextEffect does not start it
+        mark('running')
+      } catch (err) {
+        console.warn('[tte] effect failed; leaving static text', err)
+        io.unobserve(el)
+      }
+    }
+
+    // Fire on ANY sliver of the element being visible. A percentage threshold is wrong here:
+    // these headlines can be taller than the viewport, so a high threshold is unreachable and
+    // the effect would never run. Screens are full-height, so at most two ever overlap.
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        const el = e.target
+        if (e.isIntersecting) {
+          enter(el)
+        } else {
+          // destroy(), NEVER stop(). The library sets the source element to
+          // `color: transparent` and paints a canvas over it; stop() only halts the render
+          // loop, leaving an empty canvas above invisible text — the headline would vanish
+          // for good. destroy() restores the inline style and unwraps, so the plain text
+          // returns and the next entry rebuilds cleanly.
+          controllers.get(el)?.destroy()
+          controllers.delete(el)
+        }
+      }
+    }, { threshold: 0.01 })
+
+    // Wait for the webfont before measuring — tte.js builds a character grid from the
+    // element's box, and a fallback face would size that grid wrong. But never let a font
+    // promise that does not settle block the page: race it against a short timeout.
+    const start = () => {
+      if (started) { return }
+      started = true
+      mark('observing')
+      // Kick anything already on screen directly. IntersectionObserver delivery is async and
+      // and not guaranteed to arrive promptly, and the hero must not wait on it.
+      for (const el of lines) {
+        const r = el.getBoundingClientRect()
+        if (r.top < window.innerHeight && r.bottom > 0) { enter(el) }
+      }
+      lines.forEach((el) => io.observe(el))
+    }
+    let started = false
+    const fontsReady = (document.fonts && document.fonts.ready)
+      ? document.fonts.ready : Promise.resolve()
+    Promise.race([fontsReady, new Promise((r) => setTimeout(r, 1200))]).then(start).catch(start)
+  }
+</script>
+</body>
+</html>
