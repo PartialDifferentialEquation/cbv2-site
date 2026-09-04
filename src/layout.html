@@ -139,11 +139,18 @@
      it fades out, and a fully transparent element still swallows clicks — which would make
      links dead for ~200ms after every arrival. It never needs input of its own. */
   #xfer { position:fixed; inset:0; z-index:200; background:var(--bg); display:none;
-    opacity:0; pointer-events:none; transition:opacity .17s linear; }
+    opacity:0; pointer-events:none; transition:opacity .42s ease; }
   html.xfer-cover #xfer { display:block; }
   html.xfer-cover #xfer { opacity:1; }
   #xfer-grid { margin:0; width:100%; height:100%; font-family:var(--mono); line-height:1.1;
     color:transparent; white-space:pre; overflow:hidden; }
+  /* tte.js wraps its target in a box it styles inline as `display:grid; width:fit-content`.
+     For an overlay that must cover the viewport that collapses the grid to the natural size
+     of the text (~790x410), so the noise filled only the top-left corner. Inline styles need
+     !important to beat. Scoped to #xfer so the inline-block rule used by the small-type
+     effects elsewhere is untouched. */
+  #xfer [data-text-effect] { display:block !important; width:100% !important;
+    height:100% !important; max-width:none !important; }
 
   /* ── secondary pages (about / contact / legal) ─────────────────────────────────── */
   header .mark { color:var(--fg); text-decoration:none; }
@@ -241,23 +248,59 @@
   const xfer = document.getElementById('xfer')
   const xferGrid = document.getElementById('xfer-grid')
 
-  const fillGrid = () => {
+  // The page's own headline, embedded in the noise field. Both phases below are built from
+  // ONE placement, so the surviving characters sit in exactly the same grid cells in each.
+  const buildFrames = () => {
     // The renderer stretches the character grid across the element's box, so the grid only
     // needs a plausible aspect ratio, not real font metrics. Rows are capped so a very tall
     // or very wide window cannot produce a cell count that costs frames.
     const rows = Math.max(12, Math.min(30, Math.round(window.innerHeight / 34)))
     const ratio = (window.innerWidth / Math.max(1, window.innerHeight)) / 0.47
     const cols = Math.max(20, Math.min(120, Math.round(rows * ratio)))
-    const alphabet = '0123456789ABCDEF#$%&*+=/\\|<>[]{}'
-    let out = ''
-    for (let r = 0; r < rows; r++) {
-      let line = ''
-      for (let c = 0; c < cols; c++) {
-        line += alphabet[(Math.random() * alphabet.length) | 0]
-      }
-      out += line + (r < rows - 1 ? '\n' : '')
+
+    const source = document.querySelector('.line[data-effect]') || document.querySelector('h1')
+    const words = ((source && source.textContent) || '')
+      .replace(/\s+/g, ' ').trim().toUpperCase().split(' ').filter(Boolean)
+
+    // Wrap the headline to the grid width, leaving a margin so it never touches the edges.
+    const width = Math.max(8, Math.min(cols - 8, 46))
+    const lines = []
+    let line = ''
+    for (const w of words) {
+      if (!line) { line = w }
+      else if ((line + ' ' + w).length <= width) { line += ' ' + w }
+      else { lines.push(line); line = w }
+      if (lines.length >= 4) { break }
     }
-    xferGrid.textContent = out
+    if (line && lines.length < 4) { lines.push(line) }
+
+    const top = Math.max(0, Math.floor((rows - lines.length) / 2))
+    const alphabet = '0123456789ABCDEF#$%&*+=/\\|<>[]{}'
+    const noise = []
+    const kept = []
+
+    for (let r = 0; r < rows; r++) {
+      const msg = lines[r - top] || ''
+      const left = msg ? Math.max(0, Math.floor((cols - msg.length) / 2)) : 0
+      let noiseRow = ''
+      let keptRow = ''
+      for (let c = 0; c < cols; c++) {
+        const inMsg = msg && c >= left && c < left + msg.length
+        const ch = inMsg ? msg[c - left] : ''
+        // A space inside the headline stays a space in BOTH frames: parseText marks
+        // `visible: character !== ' '`, so a space is never drawn, and putting noise in the
+        // word gaps would leave stray glyphs behind when the rest clears.
+        noiseRow += (inMsg && ch !== ' ') ? ch
+                  : (inMsg ? ' ' : alphabet[(Math.random() * alphabet.length) | 0])
+        keptRow += (inMsg && ch !== ' ') ? ch : ' '
+      }
+      noise.push(noiseRow)
+      kept.push(keptRow)
+    }
+    // A grid of nothing but spaces has no visible cells and the library throws on it, so a
+    // page with no heading falls back to noise-only rather than a broken transition.
+    const hasMessage = kept.some((row) => row.trim().length > 0)
+    return { noise: noise.join('\n'), kept: hasMessage ? kept.join('\n') : null }
   }
 
   // One controller at a time on the shared overlay grid: mounting a second effect over a live
@@ -267,20 +310,14 @@
     if (overlayFx) { try { overlayFx.destroy() } catch (e) {} ; overlayFx = null }
   }
 
-  const runOverlay = (effect, duration) => {
-    clearOverlay()
-    try {
-      fillGrid()
-      overlayFx = createTextEffect(xferGrid, {
-        effect: known.has(effect) ? effect : 'decrypt',
-        colors: ['#5ad2f5', '#a78bfa'], duration, seed: (Math.random() * 9999) | 0,
-        autoplay: false,
-      })
-      void overlayFx.restart()
-    } catch (err) {
-      console.warn('[tte] transition effect failed; skipping it', err)
-      overlayFx = null
-    }
+  const mount = (text, effect, duration) => {
+    xferGrid.textContent = text
+    overlayFx = createTextEffect(xferGrid, {
+      effect: known.has(effect) ? effect : 'decrypt',
+      colors: ['#5ad2f5', '#a78bfa'], duration, seed: (Math.random() * 9999) | 0,
+      autoplay: false,
+    })
+    return overlayFx
   }
 
   // Arrival: the head script already covered the page, so decrypt, then uncover. The uncover
@@ -288,11 +325,41 @@
   // on a schedule, not whenever an animation decides it is finished.
   const arrive = () => {
     if (!root.classList.contains('xfer-cover')) { return }
-    runOverlay('decrypt', 620)
+    let frames
+    try {
+      frames = buildFrames()
+      mount(frames.noise, 'decrypt', 620)
+      void overlayFx.restart()
+    } catch (err) {
+      console.warn('[tte] transition failed; uncovering immediately', err)
+      clearOverlay()
+      root.classList.remove('xfer-cover')
+      return
+    }
+
+    // Phase two: the noise clears and the headline stays. Rebuilding on the SAME grid
+    // dimensions keeps every surviving character in the cell it already occupies, and
+    // render(1) paints the finished state with no animation -- so it reads as the message
+    // persisting out of the decryption rather than being drawn a second time.
+    //
+    // Destroy, remount and paint happen in one task, so the browser never gets a chance to
+    // paint the empty frame in between.
     setTimeout(() => {
-      xfer.style.opacity = '0'
-      setTimeout(() => { clearOverlay(); root.classList.remove('xfer-cover') }, 200)
-    }, 640)
+      if (frames.kept) {
+        try {
+          clearOverlay()
+          mount(frames.kept, 'decrypt', 1).render(1, 0)
+        } catch (err) {
+          console.warn('[tte] could not hold the headline; clearing', err)
+          clearOverlay()
+        }
+      }
+      // Let it stand for a beat before the overlay dissolves into the real page underneath.
+      setTimeout(() => {
+        xfer.style.opacity = '0'
+        setTimeout(() => { clearOverlay(); root.classList.remove('xfer-cover') }, 420)
+      }, 260)
+    }, 660)
   }
 
   // Departure: encrypt over the page, then navigate. 420ms is the ceiling — a transition a

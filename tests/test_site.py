@@ -378,6 +378,40 @@ def test_transition_has_a_failsafe_uncover(site):
     assert "prefers-reduced-motion" in head, "the transition is not gated on reduced motion"
 
 
+def test_transition_keeps_the_headline_and_clears_the_rest(site):
+    """Two frames built from ONE placement: a full-screen noise field with the page's headline
+    embedded, and the same grid with every non-headline cell blanked. Identical dimensions mean
+    the surviving characters stay in the cells they already occupy, so the message reads as
+    persisting out of the decryption rather than being redrawn."""
+    _, pages = site()
+    html = pages["index"]
+    assert "buildFrames" in html
+    assert "noise:" in html and "kept:" in html, "the two frames are not both produced"
+    # phase two paints the finished state directly -- animating it again would re-draw the
+    # message instead of leaving it standing
+    assert re.search(r"mount\(frames\.kept, 'decrypt', 1\)\.render\(1, 0\)", html), \
+        "phase two must render(1) the final frame, not replay an animation"
+    # the message comes from the page's own headline
+    assert "querySelector('.line[data-effect]') || document.querySelector('h1')" in html
+
+
+def test_transition_handles_a_page_with_no_headline(site):
+    """A grid of nothing but spaces has no visible cells and the library throws on it. A page
+    without a heading must fall back to noise-only rather than a broken transition."""
+    _, pages = site()
+    assert "hasMessage" in pages["index"]
+    assert re.search(r"kept: hasMessage \?", pages["index"])
+
+
+def test_transition_overlay_fills_the_viewport(site):
+    """tte.js wraps its target in a box it styles inline as `width: fit-content`, which
+    collapsed the overlay to the natural size of its text -- the noise filled only the
+    top-left corner. The override needs !important to beat an inline style."""
+    _, pages = site()
+    assert re.search(r"#xfer \[data-text-effect\] \{[^}]*width:100% !important", pages["index"]), \
+        "the overlay wrapper is not forced to fill the viewport"
+
+
 def test_transition_does_not_intercept_navigation(site):
     """Deliberately arrival-only. An earlier version hijacked link clicks to animate before
     navigating, and browser testing showed the click being swallowed with no navigation request

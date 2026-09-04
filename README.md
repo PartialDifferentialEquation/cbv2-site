@@ -179,9 +179,23 @@ selectable and readable to a screen reader (the canvas is `aria-hidden`).
 
 ### The arrival transition
 
-Every page opens behind a full-screen grid of random hex that **decrypts away**, so moving
-between pages reads as decrypting into the new one. A tiny synchronous script in `<head>` arms it
-before first paint; the deferred module runs the effect and uncovers.
+Every page opens behind a **full-screen grid of random hex**, and it runs in two phases:
+
+1. **Decrypt.** The whole viewport is a field of scrambling characters with the page's own
+   headline embedded in it, resolving through tte.js's `decrypt`.
+2. **The message stays, the noise goes.** A second frame is built from the *same* placement at
+   the *same* grid dimensions, with every non-headline cell blanked, and painted with
+   `render(1)` — no second animation. The surviving characters therefore sit in exactly the
+   cells they already occupied, so the headline reads as persisting out of the decryption while
+   everything around it disappears. The overlay then dissolves into the real page.
+
+Two properties of the library make this work, and both are load-bearing:
+`parseText` marks a cell `visible: character !== ' '` and effects only ever draw visible cells,
+so blanking a cell genuinely removes it; and the surviving frame must never be re-animated, or
+the message would be drawn a second time instead of standing still.
+
+A tiny synchronous script in `<head>` arms the overlay before first paint; the deferred module
+runs both phases and uncovers.
 
 It is **arrival-only, on purpose.** An earlier version also intercepted link clicks to run an
 "encrypt" animation *before* navigating. That could not be made reliable — in browser testing the
@@ -190,10 +204,16 @@ stuck on the page with no error and nothing in the console. A decorative transit
 a link that sometimes does nothing, so links are ordinary anchors the browser handles itself and
 no script sits between a click and the page it asks for.
 
-Three properties keep the remaining overlay from ever stranding anyone, each pinned by a test:
-it is `display:none` until a script turns it on (so no-JS never sees it), it is
-`pointer-events:none` (an `opacity:0` overlay still swallows clicks), and the head script removes
-it on a timer even if the module never executes.
+Three properties keep the overlay from ever stranding anyone, each pinned by a test: it is
+`display:none` until a script turns it on (so no-JS never sees it), it is `pointer-events:none`
+(an `opacity:0` overlay still swallows clicks), and the head script removes it on a timer even if
+the module never executes. Every phase advances on a timer rather than on an animation's promise,
+so the page becomes usable on a schedule.
+
+One more thing worth knowing if you touch this: tte.js wraps its target in a box it styles
+inline as `width: fit-content`. For a full-viewport overlay that collapses the grid to the
+natural size of its text — the noise filled only the top-left corner until an `!important`
+override forced the wrapper to fill.
 
 Effects do not replay when a screen is scrolled back into view; the headline settles as static
 readable text. Known and acceptable.
