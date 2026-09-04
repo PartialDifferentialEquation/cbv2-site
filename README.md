@@ -1,6 +1,6 @@
 # cbv2-site — the public CBv2 marketing site
 
-Four pages — **home, about, contact, legal** — split out of
+Five pages — **home, about, contact, legal, coming-soon** — split out of
 [`cbv2-licensing`](https://github.com/PartialDifferentialEquation/cbv2-licensing), where it used
 to be rendered per request by the licensing API. It is now a **static build**: no server-side
 code on the public edge, no dependency on the licensing service being up, and nothing on this box
@@ -79,7 +79,9 @@ stderr), which is the deliberate behaviour: no link beats a broken `mailto:`.
   public-repos-only. Either way the **published site is public** — restricting who can view a
   Pages site is an Enterprise Cloud feature. That is the point for a marketing page, but it means
   `dist/` is world-readable, so nothing that is not meant for the public should ever reach the
-  build output. Today `dist/` is the page, the vendored MIT library, and its licence files.
+  build output. Today `dist/` is the pages, two vendored MIT trees (`vendor/tte`, the library the
+  page loads, and `vendor/uiverse`, the provenance record for three adapted CSS techniques), and
+  their licence files.
 
 ### Paths must stay relative
 
@@ -107,6 +109,14 @@ adding its slug, title and description to `PAGES` in `build.py`.
 | `about` | What the platform enforces, where the ceiling is, how it deploys |
 | `contact` | Routed addresses, how pricing is structured, registered entity details |
 | `legal` | Draft terms of service and privacy statement |
+| `coming-soon` | Placeholder standing in for the two pages below, with a way back |
+
+**Two pages are built but deliberately unlinked** — `contact` and `legal`, listed in `UNLINKED`
+in `build.py`. Every operator value on them is still unset, so following "Contact" from the nav
+would land a visitor on a page of `NOT CONFIGURED` markers; the nav points at `coming-soon`
+instead. Unlinking is not hiding: both still build and are still reachable by direct URL, which
+is what makes them reviewable. Deleting their entries from `UNLINKED` relinks them, and nothing
+else changes.
 
 ## Configuration
 
@@ -120,8 +130,13 @@ Values are substituted at build time from flags or environment variables:
 | `--legal-entity` / `-address` / `-reg` / `-jurisdiction` | `CBSITE_LEGAL_*` | registered identity and governing law |
 
 `--contact` takes an **email** (becomes a `mailto:`), a **URL** (linked as-is), or free text
-(shown, not linked). Left empty it renders "Contact your account team for access." as inert text
-— deliberately, because a broken `mailto:` on the only call to action is worse than no link.
+(shown, not linked). Left empty, the label reads "Contact your account team for access." and every
+"Request access" button points at `coming-soon.html` — deliberately, because a broken `mailto:` on
+the only call to action is worse than no link, and `#` is worse still: it is not a destination, it
+just leaves the reader on the page they were already on, so the button reads as broken rather than
+as unconfigured. The free-text branch keeps `#` on purpose — that detail *is* published, rendered
+as text beside the button, so routing it to "coming soon" would contradict what the reader can
+see.
 
 **Anything unset renders as a visible `NOT CONFIGURED` marker, never as filler.** This is the
 rule the legal and contact pages depend on: a site that invents a registered address, a company

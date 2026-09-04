@@ -85,8 +85,9 @@ dependencies, no bundler, and nothing else in `dist/`.
 ## Keeping this honest
 
 ```bash
-# external assets the page fetches at runtime (expect: Google Fonts only)
-grep -oE 'https://[^"]+' src/index.html | sort -u
+# external assets the page fetches at runtime
+# (expect: fonts.googleapis.com, fonts.gstatic.com, and the uiverse URL in a CSS comment)
+grep -rhoE 'https://[^"]+' src/layout.html src/pages/ | sort -u
 # libraries and sources we vendor, and therefore redistribute (expect: tte, uiverse)
 ls src/vendor/
 ```
@@ -94,3 +95,8 @@ ls src/vendor/
 Anything either prints that is not described above is a gap. The second matters most: **a new
 directory under `src/vendor/` is a new redistribution obligation**, and it must arrive with its
 licence and notice files.
+
+The first command used to read `src/index.html`, a path that stopped existing when the site became
+multi-page. `grep` on a missing file prints nothing and returns non-zero, so the check reported a
+clean result for weeks by not looking at anything — which is the exact failure mode this section
+exists to catch. If either command ever prints nothing at all, that is the bug, not a pass.
