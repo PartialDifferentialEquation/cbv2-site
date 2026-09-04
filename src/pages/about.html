@@ -22,7 +22,10 @@
     <li><strong>Authorization.</strong> Content keys are released just-in-time and only after an
       entitlement check, so a copy on disk is not the same thing as a copy that runs.</li>
     <li><strong>Revocation.</strong> A kill switch at the stable handle — customer, deployment or
-      licence. The next run is denied. It does not require reaching the machine.</li>
+      licence. The next run is denied, without needing to reach the machine. This works because
+      the run needs a content key released just in time; it therefore does <em>not</em> apply to
+      the <code>open</code> tier, which has no key to withhold, and a revoked customer can still
+      run an <code>open</code> artifact they already hold.</li>
     <li><strong>Evidence.</strong> A hash-chained, tamper-evident audit log whose verdict latches:
       once tampering is recorded the log reports as broken permanently. Exportable for SIEM and
       for auditors.</li>
