@@ -155,6 +155,64 @@ def test_effect_names_are_real(site):
     assert "effectNames" in html and "falling back" in html
 
 
+def test_micro_effect_names_are_real(site):
+    """The headline effects live in `data-effect` attributes; the button/nav/chip effects are
+    string literals in the module script. Same failure mode either way -- an unknown name
+    throws inside the library -- so validate both against the vendored catalogue."""
+    _, html = site()
+    registered = set(re.findall(
+        r"effect\('([a-z]+)'", (VENDOR / "src" / "builtin-effects.js").read_text(encoding="utf-8")))
+    # the [selector, effect, duration, accent] tuples that drive the micro layer
+    used = set(re.findall(r"\['[^']+',\s*'([a-z]+)',\s*\d+", html))
+    assert len(used) >= 4, f"expected the micro-effect table to parse, got {used}"
+    assert used <= registered, f"unknown micro effect(s): {used - registered}"
+
+
+def test_effects_never_target_padded_elements(site):
+    """The renderer spreads its character grid across the target's whole border box and sizes
+    the font from the box height (CanvasRenderer.resize). Aiming it at a padded element draws
+    a stretched, oversized label -- so `.btn` (padding 16/28) and the chips (padding 9/15) are
+    animated through an inner, unpadded `.fx` span, never directly."""
+    _, html = site()
+    selectors = set(re.findall(r"\['([^']+)',\s*'[a-z]+',\s*\d+", html))
+    assert selectors, "no micro-effect selectors found"
+    for sel in selectors:
+        assert sel not in (".btn", ".langs > span", ".langs span"), (
+            f"{sel!r} is a padded element; target its inner .fx span instead")
+    # and the elements that carry padding really do have an inner target
+    for m in re.finditer(r'<a class="btn[^"]*"[^>]*>(.*?)</a>', html, re.S):
+        assert 'class="fx"' in m.group(1), "a button label is not wrapped in an .fx span"
+    chips = re.search(r'<div class="langs">(.*?)</div>', html, re.S)
+    assert chips and chips.group(1).count('class="fx"') >= 5, "language chips lack inner targets"
+
+
+def test_effects_disable_library_autoplay(site):
+    """Every createTextEffect call must pass `autoplay: false`.
+
+    The library defaults to `autoplay: true` and queues its own play() from the constructor.
+    An explicit restart() then starts a run, and that queued play() immediately calls stop()
+    on it -- which resolves the promise restart() returned as `{cancelled: true}`. Any code
+    that treats "promise settled" as "animation finished" therefore tears the effect down a
+    microtask after starting it, and the element never animates: no error, no warning, just
+    static text. Found in a browser, invisible everywhere else.
+    """
+    _, html = site()
+    calls = re.findall(r"createTextEffect\(\s*el\s*,\s*\{(.*?)\}\s*\)", html, re.S)
+    assert len(calls) >= 2, f"expected the headline and micro constructors, found {len(calls)}"
+    for opts in calls:
+        assert re.search(r"autoplay:\s*false", opts), \
+            f"createTextEffect without autoplay:false -- {' '.join(opts.split())[:80]}"
+
+
+def test_micro_effects_are_torn_down_not_stopped(site):
+    """A button whose effect is halted rather than destroyed keeps `color: transparent` and
+    loses its label permanently. Pin the teardown path for the interactive elements."""
+    _, html = site()
+    assert "pointerleave" in html and "stopMicro" in html
+    assert re.search(r"stopMicro\s*=\s*\(el\)\s*=>\s*\{[^}]*destroy\(\)", html), \
+        "pointerleave must destroy(), not stop()"
+
+
 def test_module_imports_are_relative_and_resolve(site):
     """The import specifier and the output layout have to agree; a mismatch is a blank page.
 

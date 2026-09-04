@@ -21,6 +21,30 @@ supplied by **[tte.js](https://flaviocopes.com/software/tte-js/)** — 37 Canvas
 effects" ported from ChrisBuilds' Python *TerminalTextEffects*. Each screen's effect is chosen for
 meaning rather than novelty; the hero of an encryption product runs `decrypt`.
 
+The same library drives the small type, so the terminal idiom runs through the whole page rather
+than stopping at the headlines:
+
+| Element | Trigger | Effect |
+|---|---|---|
+| Buttons, header links | hover / tap | `decrypt`, `scattered` |
+| Eyebrow captions | scroll into view | `wipe` |
+| Tier names (`open`…`enclave`) | scroll into view, staggered | `decrypt` |
+| Language chips | scroll into view, staggered | `binarypath` |
+
+Three rules make that work, each learned from a failure that was invisible without a browser:
+
+- **Never target a padded element.** The renderer spreads its character grid across the target's
+  whole border box and derives font size from the box height, so aiming at `.btn`
+  (`padding:16px 28px`) draws a stretched, oversized label. Every target is an inner `.fx` span
+  that hugs its text.
+- **`autoplay: false` on every effect.** The library's default queues a `play()` from the
+  constructor, which cancels the run an explicit `restart()` just began — resolving that promise
+  as `{cancelled: true}`. Completion handlers then destroy the effect a microtask after it
+  starts, and the label never animates: no error, no warning.
+- **Always `destroy()`, never `stop()`.** The library paints over text it has set to
+  `color: transparent`. Anything short of `destroy()` strands a button with no visible label —
+  so `pointerleave` mid-effect tears down rather than halting.
+
 Positioning is deliberate and unchanged from the version that shipped in the licensing repo: the
 hero sells, and the honest limits of client-side protection stay **mid-page on their own screen**
 — present, not buried, and not in the first viewport.
@@ -117,10 +141,15 @@ run the checks.
 tte.js paints an `aria-hidden` Canvas *over* text that stays in the document, so every headline is
 real DOM text:
 
-- **No JavaScript** → the whole page reads as static type. Nothing is injected by script.
-- **`prefers-reduced-motion`** → effects are skipped entirely (verified in a browser: zero
-  canvases created).
+- **No JavaScript** → the whole page reads as static type. Nothing is injected by script,
+  buttons and links included.
+- **`prefers-reduced-motion`** → effects are skipped entirely, headlines and small type alike
+  (verified in a browser: zero canvases created).
 - **Fonts blocked** → generic fallbacks, layout intact.
+
+Interactive elements keep working while animating: the library's canvas is `pointer-events: none`,
+so a button stays clickable mid-effect, its box never shifts, and the text underneath stays
+selectable and readable to a screen reader (the canvas is `aria-hidden`).
 
 Effects do not replay when a screen is scrolled back into view; the headline settles as static
 readable text. Known and acceptable.
