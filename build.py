@@ -75,6 +75,10 @@ PAGES = {
 # by direct URL, which is what makes them previewable.
 UNLINKED = ("contact", "legal")
 
+# The page the navigation and the "Request access" buttons fall back to while the routes
+# they would otherwise point at are unconfigured.
+PLACEHOLDER = "coming-soon"
+
 OUTPUTS = frozenset({"vendor", ".nojekyll"} | {f"{slug}.html" for slug in PAGES})
 
 # Operator-supplied values. name -> (env var, CLI flag, what it is, whether it may be omitted
@@ -104,14 +108,23 @@ def unset(what: str) -> str:
 def resolve_contact(contact: str) -> tuple[str, str]:
     """Turn the configured contact into an (href, label) pair.
 
-    Ported verbatim from the licensing service's `_render_landing`, because the behaviour it
-    encodes is the load-bearing part: **an unset contact must never produce a broken
-    `mailto:`**. A bare email becomes a mailto link, a URL is linked as-is, anything else is
-    shown as inert text, and empty falls back to a neutral prompt.
+    Ported from the licensing service's `_render_landing`, because the behaviour it encodes is
+    the load-bearing part: **an unset contact must never produce a broken `mailto:`**. A bare
+    email becomes a mailto link, a URL is linked as-is, anything else is shown as inert text.
+
+    With nothing configured the "Request access" buttons point at the `coming-soon` placeholder
+    rather than at `#`. `#` is not a destination — it scrolls to the top of the current page and
+    leaves the visitor where they were, so the button reads as broken. Sending them to a page
+    that says the route is not published yet is at least an answer.
+
+    The inert branch (something configured that is neither a URL nor an address — a phone
+    number, "ask your account manager") deliberately keeps `#`: the contact detail *is*
+    published, it is rendered as text right there, and routing to "coming soon" would contradict
+    the label sitting next to it.
     """
     contact = contact.strip()
     if not contact:
-        return "#", "Contact your account team for access."
+        return f"./{PLACEHOLDER}.html", "Contact your account team for access."
     if "://" in contact:
         return contact, contact
     if "@" in contact:

@@ -61,6 +61,17 @@ def site(tmp_path):
     return _build
 
 
+def body_of(page: str) -> str:
+    """Just the page's own content, without the shared nav and footer.
+
+    Split on the layout's chrome rather than on `<main>`: the home page is not wrapped in one,
+    and a test that silently matched the whole document would pass on the nav's links instead
+    of the page's.
+    """
+    assert "</header>" in page and "<footer" in page, "layout chrome missing"
+    return page.split("</header>", 1)[1].split("<footer", 1)[0]
+
+
 # ── the build ───────────────────────────────────────────────────────────────────────
 def test_every_page_builds_complete(site):
     out, pages = site()
@@ -93,14 +104,48 @@ def test_contact_url_and_default(site):
 
 
 @pytest.mark.parametrize("contact,expected", [
-    ("", ("#", "Contact your account team for access.")),
-    ("  ", ("#", "Contact your account team for access.")),
+    ("", ("./coming-soon.html", "Contact your account team for access.")),
+    ("  ", ("./coming-soon.html", "Contact your account team for access.")),
     ("sales@acme.example", ("mailto:sales@acme.example", "sales@acme.example")),
     ("https://acme.example/x", ("https://acme.example/x", "https://acme.example/x")),
+    # Configured but not linkable: the detail is on the page as text, so "coming soon" would
+    # contradict it. `#` stays here on purpose.
     ("call your rep", ("#", "call your rep")),
 ])
 def test_resolve_contact(contact, expected):
     assert build_mod.resolve_contact(contact) == expected
+
+
+def test_unconfigured_request_access_goes_to_the_placeholder_not_nowhere(site):
+    """`#` is not a destination -- it scrolls to the top and leaves the visitor where they
+    were, so every "Request access" button reads as broken until a contact is configured.
+    With nothing set they must land on the placeholder instead."""
+    _, pages = site(CONTACT="")
+    for slug, page in pages.items():
+        assert 'href="#"' not in body_of(page), f"{slug} still has a link pointing at #"
+    # and the buttons that exist actually point somewhere
+    assert 'href="./coming-soon.html"' in pages["index"]
+
+
+def test_a_configured_contact_still_wins_everywhere(site):
+    """The placeholder is a fallback, not a redirect: once a contact exists every button must
+    go to it, including on the placeholder's own siblings."""
+    _, pages = site(CONTACT="sales@acme.example")
+    for slug in ("index", "about", "legal", "contact"):
+        body = body_of(pages[slug])
+        assert 'href="mailto:sales@acme.example"' in body, f"{slug} lost the contact"
+        # The nav's own Contact entry still points at the placeholder -- that is the nav
+        # standing in for the unlinked pages, a separate thing from the access route.
+        assert "coming-soon.html" not in body, \
+            f"{slug} still falls back to the placeholder despite a configured contact"
+
+
+def test_the_placeholder_does_not_link_to_itself(site):
+    """Its only body link is the way back. A "Request access" button here would point at the
+    page the reader is already on once the fallback applies."""
+    _, pages = site(CONTACT="")
+    assert "coming-soon.html" not in body_of(pages["coming-soon"]), \
+        "the placeholder body links to itself"
 
 
 def test_build_is_repeatable_and_clears_stale_output(site):
