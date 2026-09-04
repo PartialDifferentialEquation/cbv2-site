@@ -61,7 +61,19 @@ PAGES = {
         "Draft terms of service and privacy statement for {vendor}: what a licence grants, the "
         "honest limits of client-side protection, and what the licensing service collects.",
     ),
+    "coming-soon": (
+        "Coming soon — {vendor}",
+        "Contact routes, entity details and terms for {vendor} are not published yet.",
+    ),
 }
+
+# Pages that are built but deliberately NOT linked from the site's navigation. They are
+# finished enough to review and to deploy the moment the operator values behind them are
+# real, but until then every field on them renders as NOT CONFIGURED, and pointing a
+# visitor at that is worse than telling them plainly it is not ready. `coming-soon` stands
+# in for them in the nav. Unlinking is not hiding: these still build and are still reachable
+# by direct URL, which is what makes them previewable.
+UNLINKED = ("contact", "legal")
 
 OUTPUTS = frozenset({"vendor", ".nojekyll"} | {f"{slug}.html" for slug in PAGES})
 

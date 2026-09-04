@@ -32,7 +32,10 @@ import serve
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 VENDOR = ROOT / "src" / "vendor" / "tte"
-SLUGS = ("index", "about", "contact", "legal")
+SLUGS = ("index", "about", "contact", "legal", "coming-soon")
+# Built, but deliberately absent from the nav until the values behind them are real.
+UNLINKED = ("contact", "legal")
+LINKED = tuple(s for s in SLUGS if s not in UNLINKED)
 
 FULL_CFG = {
     "VENDOR_NAME": "AcmeGuard",
@@ -222,10 +225,48 @@ def test_fonts_loaded_with_fallbacks(site):
 
 # ── navigation ──────────────────────────────────────────────────────────────────────
 @pytest.mark.parametrize("slug", SLUGS)
-def test_every_page_links_to_every_other(site, slug):
+def test_every_page_links_to_the_linked_ones(site, slug):
     _, pages = site()
-    for target in SLUGS:
+    for target in LINKED:
         assert f'href="./{target}.html"' in pages[slug], f"{slug} does not link to {target}"
+
+
+@pytest.mark.parametrize("slug", SLUGS)
+def test_unlinked_pages_are_not_in_the_navigation(site, slug):
+    """`contact` and `legal` are finished enough to review but every operator field on them
+    is still NOT CONFIGURED. Sending a visitor there is worse than the placeholder saying
+    plainly that it is not ready, so nothing links to them until the values are real."""
+    _, pages = site()
+    chrome = pages[slug].split("<main")[0] + pages[slug].split("</main>")[-1]
+    for target in UNLINKED:
+        assert f'href="./{target}.html"' not in chrome, \
+            f"{slug} links to {target}, which is not meant to be wired up yet"
+
+
+def test_unlinked_pages_are_still_built(site):
+    """Unwired is not deleted: they must keep building so they can be previewed and shipped
+    the moment the details exist."""
+    out, pages = site()
+    for slug in UNLINKED:
+        assert (out / f"{slug}.html").is_file()
+        assert len(pages[slug]) > 2000, f"{slug} built empty"
+
+
+def test_placeholder_offers_a_way_back(site):
+    """A dead end with no way out is the failure mode for a placeholder page."""
+    _, pages = site()
+    page = pages["coming-soon"]
+    assert 'href="./index.html"' in page.split("<main")[1].split("</main>")[0], \
+        "the placeholder has no back link in its body"
+    assert "Coming soon" in page
+
+
+def test_placeholder_does_not_invent_details(site):
+    """The whole reason it exists: no address, no governing law, no mailbox that isn't real."""
+    _, pages = site()
+    body = pages["coming-soon"].split("<main")[1].split("</main>")[0]
+    assert 'class="unset"' not in body, "the placeholder should have no fields to leave unset"
+    assert not re.search(r"[$£€]\s?\d", body)
 
 
 @pytest.mark.parametrize("slug", SLUGS)
