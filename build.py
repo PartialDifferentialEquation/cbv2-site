@@ -48,8 +48,8 @@ PAGES = {
     ),
     "about": (
         "About — {vendor}",
-        "What {vendor} enforces, where the ceiling is, how it is deployed, and why licence "
-        "enforcement is deliberately fail-soft.",
+        "What {vendor} enforces, who administers what, where the ceiling is, how it is "
+        "deployed, and why licence enforcement is deliberately fail-soft.",
     ),
     "contact": (
         "Contact — {vendor}",

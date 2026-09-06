@@ -230,6 +230,22 @@ def test_the_ceiling_is_stated_where_it_matters(site):
                 or "recover" in body), slug
 
 
+def test_the_customer_portal_is_described_without_overselling_it(site):
+    """Delegated administration is a support-load feature, not a security boundary. The
+    page has to say which controls stay with the vendor, or "your customers manage their
+    own users" reads as "your customers can let themselves back in"."""
+    _, pages = site()
+    about = pages["about"].lower()
+    assert "who administers what" in about
+    assert "cannot undo" in about or "cannot raise" in about, \
+        "the page describes the portal without saying what a customer cannot do"
+    assert "not a secrecy boundary" in about, \
+        "delegated administration must not read as part of the protection story"
+    index = pages["index"].lower()
+    assert "only you can revoke" in index, \
+        "the landing page must say which kill switch stays with the vendor"
+
+
 def test_legal_page_is_marked_as_a_draft(site):
     """Publishing terms that read as executed when they have not been reviewed is the failure
     mode here. The disclaimer is load-bearing, so pin it."""

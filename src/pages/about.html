@@ -28,8 +28,25 @@
       run an <code>open</code> artifact they already hold.</li>
     <li><strong>Evidence.</strong> A hash-chained, tamper-evident audit log whose verdict latches:
       once tampering is recorded the log reports as broken permanently. Exportable for SIEM and
-      for auditors.</li>
+      for auditors. Every privileged action names who took it, and the name is inside the chain
+      rather than beside it — an attribution that could be edited without breaking verification
+      would be worse than none, because it would look authoritative.</li>
   </ul>
+
+  <h2>Who administers what</h2>
+  <p>There are two consoles, and the split matters more than it sounds. Yours manages customers,
+    software, licences and the emergency controls. Each customer gets their own portal for their
+    own organization: their people, who may use what, access for a new joiner, seat usage,
+    their own administrators.</p>
+  <p>The boundary is enforced rather than presentational. A customer's portal is confined to
+    their own organization by the shape of the interface — there is no organization to name, so
+    there is nothing to substitute. They cannot raise the limits you set, cannot issue themselves
+    a long-lived credential, and cannot undo something you did: their suspensions and your
+    revocations are separate switches, and both deny. Suspending a departing employee is theirs;
+    cutting off the organization is yours.</p>
+  <p>This is administration, not a secrecy boundary. It reduces the support load of running a
+    licensed product and makes the audit log say which side of the relationship made each change.
+    It does not change the ceiling described below.</p>
 
   <h2>Where the ceiling is</h2>
   <p>Client-side execution cannot deliver mathematical secrecy. If code runs on a machine somebody
