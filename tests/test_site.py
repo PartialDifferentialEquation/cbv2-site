@@ -643,3 +643,37 @@ def test_reduced_motion_respected(site, slug):
     assert "prefers-reduced-motion" in pages[slug]
     assert re.search(r"if \(!reduce[^)]*\)", pages[slug]), \
         f"{slug} does not gate effects on reduced motion"
+
+
+# ── every operator value that reaches the page is escaped ──────────────────────────
+def test_a_contact_url_with_a_query_string_is_escaped(site):
+    """`CONTACT_HREF` lands inside `href="..."` on every page. An ordinary tracked contact
+    URL contains `&`, which is not valid raw in an attribute -- and this was the one value
+    the builder did not escape."""
+    _, pages = site(CONTACT="https://acme.example/req?src=site&ref=cb")
+    body = body_of(pages["index"])
+    assert "src=site&amp;ref=cb" in body
+    assert "src=site&ref=cb" not in body, "the & reached the page unescaped"
+
+
+def test_a_contact_value_cannot_break_out_of_the_href(site):
+    """A quote in the contact value closed the attribute and let arbitrary markup into a
+    PUBLIC page. The value is operator-supplied at build time rather than visitor-supplied,
+    so this is a correctness and hardening fix, not a live XSS -- but every other operator
+    value is escaped and this one has no business being the exception."""
+    _, pages = site(CONTACT='https://x.example/" onfocus="alert(1)" autofocus x="')
+    for slug, page in pages.items():
+        # The escaped form (`&quot; onfocus=&quot;`) is inert -- it is text inside one
+        # attribute value. What must never appear is the RAW quote that would end the
+        # attribute and start a new one.
+        assert '" onfocus=' not in page, f"{slug} let a value break out of the href"
+        assert "autofocus x=" not in page or "&quot;" in page, f"{slug} escaped nothing"
+
+
+def test_ordinary_contacts_are_unaffected(site):
+    """Negative control: escaping must not change what a normal mailto or URL renders as,
+    or the two tests above would pass against a builder that mangled every link."""
+    _, pages = site(CONTACT="sales@acme.example")
+    assert 'href="mailto:sales@acme.example"' in body_of(pages["index"])
+    _, pages = site(CONTACT="https://acme.example/access")
+    assert 'href="https://acme.example/access"' in body_of(pages["index"])

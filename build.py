@@ -148,8 +148,14 @@ def build_values(cfg: dict[str, str], *, year: int | None = None) -> dict[str, s
     now_year = year if year is not None else datetime.datetime.now(datetime.timezone.utc).year
     values = {
         "VENDOR_NAME": html.escape(cfg.get("VENDOR_NAME") or "CBv2"),
-        "CONTACT_HREF": contact_href,
-        "CONTACT_LABEL": contact_label,
+        # Escaped like every other operator value. These two were the only ones that were
+        # not, and `CONTACT_HREF` lands inside `href="..."` on every page of a PUBLIC site: an
+        # entirely ordinary contact URL with a query string (`?src=site&ref=cb`) emitted an
+        # unescaped `&`, and a value containing a quote closed the attribute and let arbitrary
+        # markup into the page. Escaping an href is correct -- a browser decodes `&amp;` back
+        # to `&` before following the link.
+        "CONTACT_HREF": html.escape(contact_href),
+        "CONTACT_LABEL": html.escape(contact_label),
         "YEAR": str(now_year),
         "LEGAL_UPDATED": datetime.datetime.now(datetime.timezone.utc).strftime("%d %B %Y"),
     }
